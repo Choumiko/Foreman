@@ -2,6 +2,8 @@ require "defines"
 deflate = require "lmod/deflatelua"
 base64 = require "lmod/base64"
 
+defaultBook = require "defaultBook"
+
 local onsave = false
 
 function init()
@@ -294,6 +296,11 @@ game.onevent(defines.events.onguiclick, function(event)
 			guiSettings.newWindow.destroy()
 			guiSettings.newWindowVisable = false
 		end
+	elseif event.element.name == "blueprintExportAll" then
+	 saveToBook(game.players[event.element.playerindex])
+	elseif event.element.name == "blueprintLoadAll" then
+	 loadFromBook(game.players[event.element.playerindex])
+	 refreshWindows = true
 	elseif endsWith(event.element.name, "_blueprintInfoDelete") then
 		local data = split(event.element.name,"_")
 		local blueprintIndex = data[1]
@@ -640,6 +647,8 @@ function createBlueprintWindow(player, blueprints, guiSettings)
 			buttonFlow.add({type="button", name="blueprintPageForward", caption={"btn-blueprint-pageforward"}, style="blueprint_button_style"})
 		end
 		buttons.add({type="button", name="blueprintNew", caption={"btn-blueprint-new"}, style="blueprint_button_style"})
+		buttons.add({type="button", name="blueprintExportAll", caption={"btn-blueprint-export"}, style="blueprint_button_style"})
+		buttons.add({type="button", name="blueprintLoadAll", caption={"btn-blueprint-load"}, style="blueprint_button_style"})
 		buttons.add({type="button", name="blueprintClose", caption={"btn-blueprint-close"}, style="blueprint_button_style"})
 		
 		local displayed = 0
@@ -727,8 +736,10 @@ function setBlueprintData(blueprintStack, blueprintData)
 		blueprintStack.setblueprintentities(blueprintData.entities)
 		--debugLog(serpent.block(blueprintData.icons))
 		local newTable = {}
-		for i = 1, #blueprintData.icons do
-			table.insert(newTable, blueprintData.icons[i])
+		for i = 0, #blueprintData.icons do
+		  if blueprintData.icons[i] then
+			 table.insert(newTable, blueprintData.icons[i])
+		  end
 		end
 		blueprintStack.blueprinticons = newTable
 		return true
@@ -824,4 +835,22 @@ end
 
 function trim(s)
 	return (s:gsub("^%s*(.-)%s*$", "%1"))
+end
+
+function saveToBook(player)
+  game.makefile("blueprints/defaultBookPreSave.lua", serpent.dump(defaultBook, {name="blueprints"}))
+  game.makefile("blueprints/defaultBook.lua", serpent.dump(glob.blueprints, {name="blueprints"}))
+  player.print(#glob.blueprints.." blueprints exported")
+  --game.makefile("farl/loco"..n..".lua", serpent.block(findAllEntitiesByType("locomotive")))
+end
+
+function loadFromBook(player)
+  if #defaultBook > 0 then
+    game.makefile("blueprints/defaultBookpreLoad.lua", serpent.dump(glob.blueprints, {name="blueprints"}))
+    glob.blueprints = defaultBook    
+    table.sort(glob.blueprints, sortBlueprint)
+    player.print(#glob.blueprints.." blueprints imported")
+  else
+    player.print("No blueprints found, skipped loading.")
+  end
 end
