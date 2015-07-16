@@ -1,0 +1,9 @@
+{
+	"name":"Foreman",
+	"author":"JamesOFarrell",
+	"version":"0.0.4",
+	"title":"Foreman",
+	"homepage":"http://localhost/",
+	"description":"For managing all your blueprint needs.",
+	"dependencies": ["base >= 0.11"]
+} 
