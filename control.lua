@@ -8,163 +8,156 @@ local onsave = false
 
 function init()
 	--why do this here and not somewhere sane?
-	if glob.blueprints == nil then
-		glob.blueprints = {}
+	if global.blueprints == nil then
+		global.blueprints = {}
 	end
-	if glob.guiSettings == nil then
-		glob.guiSettings = {}
+	if global.guiSettings == nil then
+		global.guiSettings = {}
 	end
-	--if #glob.guiSettings < #game.players then
+	--if #global.guiSettings < #game.players then
 	for i,player in ipairs(game.players) do
-		if glob.guiSettings[i] == nil then
-			glob.guiSettings[i] = {page = 1, blueprintCount = 0, displayCount = 10}
+		if global.guiSettings[i] == nil then
+			global.guiSettings[i] = {page = 1, blueprintCount = 0, displayCount = 10}
 		end
 	end
 	--end
-	if glob.tech == nil or not glob.tech.valid then
+	if global.tech == nil or not global.tech.valid then
 		for i,player in ipairs(game.players) do
 			if player.character ~= nil then
-				glob.tech = player.character.force.technologies["automated-construction"]
+				global.tech = player.character.force.technologies["automated-construction"]
 			end
 		end
 	else
-		if glob.tech.researched then
-			glob.unlocked = true
+		if global.tech.researched then
+			global.unlocked = true
 		end
 	end
 end
 
-
-
-
-
 onTickEvent_long = function(event)
 	if event.tick % 300 == 20 then
 		init()
-		if glob.unlocked then
-			game.onevent(defines.events.ontick, nil)
-			createBlueprintButtons(game.players, glob.guiSettings)
+		if global.unlocked then
+			game.on_event(defines.events.on_tick, nil)
+			createBlueprintButtons(game.players, global.guiSettings)
 		end
 	end
 end
 
 onTickEvent_destroy = function(event)
-	game.onevent(defines.events.ontick, glob.onTickEvent)
-	for i, window in ipairs(glob.destroy) do
+	game.on_event(defines.events.on_tick, global.onTickEvent)
+	for i, window in ipairs(global.destroy) do
 		if window then
 			window.destroy()
 		end
 	end
-	glob.destroy = nil
+	global.destroy = nil
 end
 
 ontickEvent = function(event)
-	if glob.recreateGuiAtTick == nil or (event.tick %15 == 14 and glob.recreateGuiAtTick < event.tick) then
+	if global.recreateGuiAtTick == nil or (event.tick %15 == 14 and global.recreateGuiAtTick < event.tick) then
 		debugLog("OnTick")
 		init()
-		if glob.unlocked then
+		if global.unlocked then
 			debugLog("Unlocked")
-			createBlueprintButtons(game.players, glob.guiSettings)
-			game.onevent(defines.events.ontick, nil)
+			createBlueprintButtons(game.players, global.guiSettings)
+			game.on_event(defines.events.on_tick, nil)
 		else
-			game.onevent(defines.events.ontick, onTickEvent_long)
+			game.on_event(defines.events.on_tick, onTickEvent_long)
 		end
-		glob.recreateGuiAtTick = nil
+		global.recreateGuiAtTick = nil
 	-- else if  then
-		-- if glob.recreateGuiAtTick ~= nil and glob.recreateGuiAtTick < event.tick then
+		-- if global.recreateGuiAtTick ~= nil and global.recreateGuiAtTick < event.tick then
 			-- init()
-			-- if glob.unlocked then
+			-- if global.unlocked then
 				-- createBlueprintButtons(game.players)
-				-- game.onevent(defines.events.ontick, nil)
+				-- game.on_event(defines.events.on_tick, nil)
 			-- else
-				-- game.onevent(defines.events.ontick, onTickEvent_long)
+				-- game.on_event(defines.events.on_tick, onTickEvent_long)
 			-- end
 		-- end
-		-- if glob.skipOne == nil then --WHY, COZ BUGS, THATS WHY!
+		-- if global.skipOne == nil then --WHY, COZ BUGS, THATS WHY!
 			-- debugLog("Tick: " .. event.tick)
-			-- glob.skipOne = true
+			-- global.skipOne = true
 		-- else
 			-- init()--end
 			-- debugLog("Tock: " .. event.tick)
-			-- if glob.unlocked then
+			-- if global.unlocked then
 				-- createBlueprintButtons(game.players)
-				-- game.onevent(defines.events.ontick, nil)
+				-- game.on_event(defines.events.on_tick, nil)
 			-- else
-				-- game.onevent(defines.events.ontick, onTickEvent_long)
+				-- game.on_event(defines.events.on_tick, onTickEvent_long)
 			-- end
-			-- glob.skipOne = nil 
+			-- global.skipOne = nil 
 		-- end
 	end
 end
 
-game.onevent(defines.events.ontick, ontickEvent)
+game.on_event(defines.events.on_tick, ontickEvent)
 
-game.onsave(function()
-	game.onevent(defines.events.ontick, ontickEvent)
+game.on_save(function()
+	game.on_event(defines.events.on_tick, ontickEvent)
 	-- for i,player in ipairs(game.players) do
 		-- if(player ~= nil) then
-			-- pcall(function () destroyGuis(player, glob.guiSettings[i]) end)
+			-- pcall(function () destroyGuis(player, global.guiSettings[i]) end)
 		-- end
 	-- end
 	-- for i, player in ipairs(game.players) do
 		-- if player.character ~= nil then
-			-- destroyGuis(payer, glob.guiSettings[i])
+			-- destroyGuis(payer, global.guiSettings[i])
 		-- end
 	-- end
 	--onsave = true
-	--glob.guiState = destroyGuis(game.players, glob.guiSettings)
-	--game.onevent(defines.events.ontick, ontickEvent)
-	--glob.skipNextUpdate = true
-	glob.recreateGuiAtTick = game.tick + 60
+	--global.guiState = destroyGuis(game.players, global.guiSettings)
+	--game.on_event(defines.events.on_tick, ontickEvent)
+	--global.skipNextUpdate = true
+	global.recreateGuiAtTick = game.tick + 60
 end)
 
-game.onload(function()
+game.on_load(function()
 	-- debugLog("OnLoad")
-	-- --glob.recreateGuiAtTick = nil
-	-- glob.recreateGuiAtTick = game.tick + 60
+	-- --global.recreateGuiAtTick = nil
+	-- global.recreateGuiAtTick = game.tick + 60
 	-- --init()
-	-- game.onevent(defines.events.ontick, ontickEvent)
+	-- game.on_event(defines.events.on_tick, ontickEvent)
 	-- if not onsave then
 		 
 	-- else
 		-- onsave = false
 	-- end
-	--game.onevent(defines.events.ontick, ontickEvent)
+	--game.on_event(defines.events.on_tick, ontickEvent)
 	--
 	-- for i, player in ipairs(game.players) do
 		-- if player.character ~= nil then
-			-- destroyGuis(payer, glob.guiSettings[i])
+			-- destroyGuis(payer, global.guiSettings[i])
 		-- end
 	-- end
-	--game.onevent(defines.events.ontick, ontickEvent)
+	--game.on_event(defines.events.on_tick, ontickEvent)
 end)
 
-game.onevent(defines.events.onplayercreated, function(event)
+game.on_event(defines.events.on_player_created, function(event)
 	debugLog("OnPlayerCreated")
-	-- glob.recreateGuiAtTick = event.tick + 60
-	
-	
-	
+	-- global.recreateGuiAtTick = event.tick + 60
 	-- for i,player in ipairs(game.players) do
-		-- if glob.guiSettings[i] == nil then
-			-- glob.guiSettings[i] = {page = 1, blueprintCount = 0, displayCount = 10}
+		-- if global.guiSettings[i] == nil then
+			-- global.guiSettings[i] = {page = 1, blueprintCount = 0, displayCount = 10}
 		-- end
 	-- end
 	
-	-- game.onevent(defines.events.ontick, ontickEvent)
+	-- game.on_event(defines.events.on_tick, ontickEvent)
 	-- for i,player in ipairs(game.players) do
 		-- if(player ~= nil) then
-			-- --destroyGuis(player, glob.guiSettings[i])
+			-- --destroyGuis(player, global.guiSettings[i])
 		-- end
 	-- end
 	-- init()
 	-- someonejoined = true
 end)
 
-game.onevent(defines.events.onresearchfinished, function(event)
+game.on_event(defines.events.on_research_finished, function(event)
 	if event.research ~= nil and event.research.name == "automated-construction" then
 		init()
-		createBlueprintButtons(game.players, glob.guiSettings)
+		createBlueprintButtons(game.players, global.guiSettings)
 	end
 end)
 
@@ -230,7 +223,6 @@ function destroyGuis(player, guiSettings)
 	--end
 end
 
-
 function createBlueprintButton(player, guiSettings)
 	if player ~= nil then
 		debugLog("player not nil")
@@ -246,14 +238,12 @@ function createBlueprintButton(player, guiSettings)
 	end
 end
 
-
-
-game.onevent(defines.events.onguiclick, function(event) 
+game.on_event(defines.events.on_gui_click, function(event) 
 	local refreshWindow = false
 	local refreshWindows = false
 
 	if event.element.name == "blueprintTools" or event.element.name == "blueprintClose" then
-		local player = game.players[event.element.playerindex]
+		local player = game.players[event.element.player_index]
 		if player ~= nil then
 			if player.gui.left.blueprintWindow == nil then
 				refreshWindow = true
@@ -262,44 +252,44 @@ game.onevent(defines.events.onguiclick, function(event)
 			end
 		end
 	elseif event.element.name == "blueprintPageBack" then
-		local guiSettings = glob.guiSettings[event.element.playerindex]
+		local guiSettings = global.guiSettings[event.element.player_index]
 		if guiSettings.page > 1 then
 			guiSettings.page = guiSettings.page - 1
 			refreshWindow = true
 		end
 	elseif event.element.name == "blueprintPageForward" then
-		local guiSettings = glob.guiSettings[event.element.playerindex]
-		local lastPage = getLastPage(guiSettings.displayCount, #glob.blueprints)
+		local guiSettings = global.guiSettings[event.element.player_index]
+		local lastPage = getLastPage(guiSettings.displayCount, #global.blueprints)
 		if guiSettings.page < lastPage then
 			guiSettings.page = guiSettings.page + 1
 			refreshWindow = true
 		end
 	elseif event.element.name == "blueprintDisplayCount" then
-		local guiSettings = glob.guiSettings[event.element.playerindex]
+		local guiSettings = global.guiSettings[event.element.player_index]
 		if not guiSettings.displayCountWindowVisable then
-			guiSettings.displayCountWindow = createDisplayCountWindow(game.players[event.element.playerindex].gui.center, guiSettings.displayCount)
+			guiSettings.displayCountWindow = createDisplayCountWindow(game.players[event.element.player_index].gui.center, guiSettings.displayCount)
 			guiSettings.displayCountWindowVisable = true
 		else
 			guiSettings.displayCountWindow.destroy()
 			guiSettings.displayCountWindowVisable = false
 		end
 	elseif event.element.name == "blueprintNew" or event.element.name == "blueprintNewCancel" then
-		local guiSettings = glob.guiSettings[event.element.playerindex]
+		local guiSettings = global.guiSettings[event.element.player_index]
 		if not guiSettings.newWindowVisable then
-			local num = (#glob.blueprints + 1) .. ""
+			local num = (#global.blueprints + 1) .. ""
 			if string.len(num) < 2 then
 				num = "0" .. num
 			end
-			guiSettings.newWindow = createNewBlueprintWindow(game.players[event.element.playerindex].gui.center, "_New " .. num)
+			guiSettings.newWindow = createNewBlueprintWindow(game.players[event.element.player_index].gui.center, "_New " .. num)
 			guiSettings.newWindowVisable = true
 		else
 			guiSettings.newWindow.destroy()
 			guiSettings.newWindowVisable = false
 		end
 	elseif event.element.name == "blueprintExportAll" then
-	 saveToBook(game.players[event.element.playerindex])
+	 saveToBook(game.players[event.element.player_index])
 	elseif event.element.name == "blueprintLoadAll" then
-	 loadFromBook(game.players[event.element.playerindex])
+	 loadFromBook(game.players[event.element.player_index])
 	 refreshWindows = true
 	elseif endsWith(event.element.name, "_blueprintInfoDelete") then
 		local data = split(event.element.name,"_")
@@ -307,7 +297,7 @@ game.onevent(defines.events.onguiclick, function(event)
 		if blueprintIndex ~= nil then
 			blueprintIndex = tonumber(blueprintIndex)
 			debugLog(blueprintIndex)
-			table.remove(glob.blueprints, blueprintIndex)
+			table.remove(global.blueprints, blueprintIndex)
 			refreshWindows = true
 		end
 	elseif endsWith(event.element.name, "_blueprintInfoLoad") then -- Load TOOOOOOOOOOOOOOOOO hotbar
@@ -315,9 +305,9 @@ game.onevent(defines.events.onguiclick, function(event)
 		local blueprintIndex = data[1]
 		if blueprintIndex ~= nil then
 			blueprintIndex = tonumber(blueprintIndex)
-			local player = game.players[event.element.playerindex]
+			local player = game.players[event.element.player_index]
 			local blueprint = findBlueprintInHotbar(player)
-			local blueprintData = glob.blueprints[blueprintIndex]
+			local blueprintData = global.blueprints[blueprintIndex]
 			
 			if blueprint ~= nil and blueprintData ~= nil then
 				local status, err = pcall(function() setBlueprintData(blueprint, blueprintData) end )
@@ -328,16 +318,16 @@ game.onevent(defines.events.onguiclick, function(event)
 					player.print(err)
 				end
 			else
-				game.players[event.element.playerindex].print({"msg-no-blueprint"})
+				game.players[event.element.player_index].print({"msg-no-blueprint"})
 			end
 		end	
 	elseif endsWith(event.element.name, "_blueprintInfoExport") then -- Export to file
 		local data = split(event.element.name,"_")
 		local blueprintIndex = data[1]
-		local player = game.players[event.element.playerindex]
+		local player = game.players[event.element.player_index]
 		if blueprintIndex ~= nil then
 			blueprintIndex = tonumber(blueprintIndex)
-			local blueprintData = glob.blueprints[blueprintIndex]
+			local blueprintData = global.blueprints[blueprintIndex]
 			--local stringOutput = convertBlueprintDataToString(blueprintData)
 			local stringOutput = serializeBlueprintData(blueprintData)
 			if stringOutput then
@@ -354,7 +344,7 @@ game.onevent(defines.events.onguiclick, function(event)
 				else
 					filename = "blueprints/" .. filename .. ".blueprint"
 				end
-				--debugLog("Player: " .. player.name .. " : " .. event.element.playerindex)
+				--debugLog("Player: " .. player.name .. " : " .. event.element.player_index)
 				--filename = "blueprints/" .. filename .. ".blueprint"
 				--filename64 = "blueprints/" .. blueprintData.name .. "64.blueprint"
 				game.makefile(filename , stringOutput)
@@ -368,22 +358,22 @@ game.onevent(defines.events.onguiclick, function(event)
 	elseif endsWith(event.element.name, "_blueprintInfoRename") then
 		local data = split(event.element.name,"_")
 		local blueprintIndex = data[1]
-		local guiSettings = glob.guiSettings[event.element.playerindex]
+		local guiSettings = global.guiSettings[event.element.player_index]
 		if blueprintIndex ~= nil and guiSettings ~= nil then
 			blueprintIndex = tonumber(blueprintIndex)
 			if guiSettings.renameWindowVisable then
 				guiSettings.renameWindow.destroy()
 			end
 			guiSettings.renameWindowVisable = true
-			guiSettings.renameWindow = createRenameWindow(game.players[event.element.playerindex].gui.center, blueprintIndex, glob.blueprints[blueprintIndex].name)
+			guiSettings.renameWindow = createRenameWindow(game.players[event.element.player_index].gui.center, blueprintIndex, global.blueprints[blueprintIndex].name)
 		end
 	elseif event.element.name == "blueprintNewImport" then
-		local guiSettings = glob.guiSettings[event.element.playerindex]
-		local player = game.players[event.element.playerindex]
+		local guiSettings = global.guiSettings[event.element.player_index]
+		local player = game.players[event.element.player_index]
 		if guiSettings.newWindowVisable then
 			local name = guiSettings.newWindow.blueprintNewNameFlow.blueprintNewNameText.text
 			if name == nil or name == "" then
-				name = "new_" .. (#glob.blueprints + 1)
+				name = "new_" .. (#global.blueprints + 1)
 			else
 				name = cleanupName(name) 
 			end
@@ -414,8 +404,8 @@ game.onevent(defines.events.onguiclick, function(event)
 					blueprintData.name = name
 				end
 
-				table.insert(glob.blueprints, blueprintData)
-				table.sort(glob.blueprints, sortBlueprint)
+				table.insert(global.blueprints, blueprintData)
+				table.sort(global.blueprints, sortBlueprint)
 				player.print({"msg-blueprint-imported"})
 				player.print("Name: " .. blueprintData.name)
 				destroyWindowNextTick(guiSettings.newWindow)
@@ -424,13 +414,13 @@ game.onevent(defines.events.onguiclick, function(event)
 			end
 		end
 	elseif event.element.name == "blueprintRenameCancel" then
-		local guiSettings = glob.guiSettings[event.element.playerindex]
+		local guiSettings = global.guiSettings[event.element.player_index]
 		if guiSettings.renameWindowVisable then
 			guiSettings.renameWindow.destroy()
 			guiSettings.renameWindowVisable = false
 		end
 	elseif endsWith(event.element.name,"_blueprintRenameOK") then
-		local guiSettings = glob.guiSettings[event.element.playerindex]
+		local guiSettings = global.guiSettings[event.element.player_index]
 		local data = split(event.element.name,"_")
 		local blueprintIndex = data[1]
 		debugLog(blueprintIndex)
@@ -440,7 +430,7 @@ game.onevent(defines.events.onguiclick, function(event)
 			if newName ~= nil then
 				newName = cleanupName(newName)
 				if newName ~= ""  then
-					local blueprintData = glob.blueprints[blueprintIndex]
+					local blueprintData = global.blueprints[blueprintIndex]
 					blueprintData.name = newName
 					destroyWindowNextTick(guiSettings.renameWindow)
 					guiSettings.renameWindowVisable = false
@@ -449,7 +439,7 @@ game.onevent(defines.events.onguiclick, function(event)
 			end
 		end
 	elseif event.element.name == "blueprintDisplayCountOK" then
-		local guiSettings = glob.guiSettings[event.element.playerindex]
+		local guiSettings = global.guiSettings[event.element.player_index]
 		if guiSettings.displayCountWindowVisable then
 			local newInt = tonumber(guiSettings.displayCountWindow.blueprintDisplayCountText.text)
 			if newInt then
@@ -462,7 +452,7 @@ game.onevent(defines.events.onguiclick, function(event)
 				guiSettings.page = 1
 				refreshWindow = true
 			else
-				game.players[event.element.playerindex].print({"msg-notanumber"})
+				game.players[event.element.player_index].print({"msg-notanumber"})
 			end
 			destroyWindowNextTick(guiSettings.displayCountWindow)
 			guiSettings.displayCountWindowVisable = false
@@ -472,12 +462,12 @@ game.onevent(defines.events.onguiclick, function(event)
 	
 	
 	if refreshWindow then
-		createBlueprintWindow(game.players[event.element.playerindex], glob.blueprints, glob.guiSettings[event.element.playerindex])
+		createBlueprintWindow(game.players[event.element.player_index], global.blueprints, global.guiSettings[event.element.player_index])
 	end
 	if refreshWindows then
 		for i,player in ipairs(game.players) do
-			if glob.guiSettings[i].windowVisable then
-				createBlueprintWindow(player, glob.blueprints, glob.guiSettings[i])
+			if global.guiSettings[i].windowVisable then
+				createBlueprintWindow(player, global.blueprints, global.guiSettings[i])
 			end
 		end
 	end
@@ -543,11 +533,11 @@ function deserializeBlueprintData(dataString)
 end
 
 function destroyWindowNextTick(window) -- THIS IS A HACK TO WORKAROUND A GUI TIMING BUG IN FACTORIO
-	if glob.destroy == nil then
-		glob.destroy = {}
-		game.onevent(defines.events.ontick, onTickEvent_destroy)
+	if global.destroy == nil then
+		global.destroy = {}
+		game.on_event(defines.events.on_tick, onTickEvent_destroy)
 	end
-	table.insert(glob.destroy, window)
+	table.insert(global.destroy, window)
 end
 
 function cleanupName(name)
@@ -563,9 +553,9 @@ function isMultiplayer()
 end
 
 function testBlueprint(blueprint)
-	local entities = blueprint.getblueprintentities()
+	local entities = blueprint.get_blueprint_entities()
 	convertToRecipeName(entities)
-	return pcall(function () blueprint.setblueprintentities(entities) end)
+	return pcall(function () blueprint.set_blueprint_entities(entities) end)
 end
 
 function createBlueprintButtons(players, guiSettings)
@@ -578,7 +568,7 @@ function findSetupBlueprintInHotbar(player)
 	local blueprints = findBlueprintsInHotbar(player)
 	if blueprints ~= nil then
 		for i, blueprint in ipairs(blueprints) do
-			if blueprint.isblueprintsetup() then
+			if blueprint.is_blueprint_setup() then
 				return blueprint
 			end
 		end
@@ -595,13 +585,13 @@ end
 function findBlueprintsInHotbar(player)
 	local blueprints = {}
 	if player ~= nil then
-		local hotbar = player.getinventory(1)
+		local hotbar = player.get_inventory(1)
 		if hotbar ~= nil then
 			local i = 1
 			while (i < 30) do
 				local itemStack
 				if pcall(function () itemStack = hotbar[i] end) then
-					if itemStack ~= nil and itemStack.type == "blueprint" then
+					if itemStack.valid_for_read and itemStack.type == "blueprint" then
 							table.insert(blueprints, itemStack)
 					end
 					i = i + 1
@@ -733,7 +723,7 @@ end
 
 function setBlueprintData(blueprintStack, blueprintData)
 	if blueprintStack ~= nil then
-		blueprintStack.setblueprintentities(blueprintData.entities)
+		blueprintStack.set_blueprint_entities(blueprintData.entities)
 		--debugLog(serpent.block(blueprintData.icons))
 		local newTable = {}
 		for i = 0, #blueprintData.icons do
@@ -741,17 +731,17 @@ function setBlueprintData(blueprintStack, blueprintData)
 			 table.insert(newTable, blueprintData.icons[i])
 		  end
 		end
-		blueprintStack.blueprinticons = newTable
+		blueprintStack.blueprint_icons = newTable
 		return true
 	end
 	return false
 end
 
 function getBlueprintData(blueprintStack)
-	if blueprintStack ~= nil and blueprintStack.isblueprintsetup() then
+	if blueprintStack ~= nil and blueprintStack.is_blueprint_setup() then
 		local data = {}
-		data.icons = blueprintStack.blueprinticons
-		data.entities = blueprintStack.getblueprintentities()
+		data.icons = blueprintStack.blueprint_icons
+		data.entities = blueprintStack.get_blueprint_entities()
 		convertToRecipeName(data.entities)
 		return data
 	end
@@ -785,10 +775,10 @@ end
 
 --function getBlueprintDataText (blueprintData)
 
--- game.players[1].getinventory(1).getitemstack(1)
--- [13:19:18] <Rseding91|H> Read: name, type, hasgrid, grid, health, durability, ammo, blueprinticons
--- [13:19:25] <Rseding91|H> write: health, durability, blueprinticons
--- [13:19:36] <Rseding91|H> methods: isblueprintsetup(), getblueprintentities(), setblueprintentities()
+-- game.players[1].get_inventory(1).get_itemstack(1)
+-- [13:19:18] <Rseding91|H> Read: name, type, hasgrid, grid, health, durability, ammo, blueprint_icons
+-- [13:19:25] <Rseding91|H> write: health, durability, blueprint_icons
+-- [13:19:36] <Rseding91|H> methods: is_blueprint_setup(), get_blueprint_entities(), set_blueprint_entities()
 
 function debugLog(message)
 	if false then -- set for debug
@@ -839,17 +829,17 @@ end
 
 function saveToBook(player)
   game.makefile("blueprints/defaultBookPreSave.lua", serpent.dump(defaultBook, {name="blueprints"}))
-  game.makefile("blueprints/defaultBook.lua", serpent.dump(glob.blueprints, {name="blueprints"}))
-  player.print(#glob.blueprints.." blueprints exported")
+  game.makefile("blueprints/defaultBook.lua", serpent.dump(global.blueprints, {name="blueprints"}))
+  player.print(#global.blueprints.." blueprints exported")
   --game.makefile("farl/loco"..n..".lua", serpent.block(findAllEntitiesByType("locomotive")))
 end
 
 function loadFromBook(player)
   if #defaultBook > 0 then
-    game.makefile("blueprints/defaultBookpreLoad.lua", serpent.dump(glob.blueprints, {name="blueprints"}))
-    glob.blueprints = defaultBook    
-    table.sort(glob.blueprints, sortBlueprint)
-    player.print(#glob.blueprints.." blueprints imported")
+    game.makefile("blueprints/defaultBookpreLoad.lua", serpent.dump(global.blueprints, {name="blueprints"}))
+    global.blueprints = defaultBook    
+    table.sort(global.blueprints, sortBlueprint)
+    player.print(#global.blueprints.." blueprints imported")
   else
     player.print("No blueprints found, skipped loading.")
   end
