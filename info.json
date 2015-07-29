@@ -5,5 +5,5 @@
 	"title":"Foreman",
 	"homepage":"http://localhost/",
 	"description":"For managing all your blueprint needs.",
-	"dependencies": ["base >= 0.12"]
+	"dependencies": ["base >= 0.12.1"]
 } 
