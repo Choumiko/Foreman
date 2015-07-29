@@ -723,6 +723,48 @@ end
 
 function setBlueprintData(blueprintStack, blueprintData)
 	if blueprintStack ~= nil then
+    -- convert 0.11 blueprints to 0.12
+	 local ent = blueprintData.entities
+   for _, entity in pairs(ent) do
+	   if entity.entitynumber then
+	     entity.entity_number = entity.entitynumber
+	     entity.entitynumber = nil
+	   end
+	   if entity.connections and not entity.connections["1"] then
+         local newConn = {["1"] = {}}
+         for color, c in pairs(entity.connections) do
+           if color == "red" or color == "green" then
+             newConn["1"][color] = {}
+             for _, ci in pairs(c) do
+               table.insert(newConn["1"][color], {entity_id = c[1]})
+             end
+           end
+         end
+         entity.connections = newConn	   
+	   end
+	   if entity.conditions and not entity.conditions.circuit then
+	     local newCond = {red=false,green=false}
+	     local logi = {}
+	     for color, cond in pairs(entity.conditions) do
+	       if color == "red" or color == "green" then
+	         newCond[color] = {}
+	         newCond[color].first_signal = {type="item", name=cond.name}
+	         newCond[color].constant = cond.count
+	         newCond[color].comparator = cond.operator
+         end
+         if color == "logistics" then
+          logi.first_signal = {type="item", name=cond.name}
+          logi.constant = cond.count
+          logi.comparator = cond.operater
+         end	       
+	     end
+	     if newCond.red and newCond.green then
+	       newCond = newCond.red
+       end
+	     entity.conditions = nil
+	     entity.conditions = {circuit = newCond, logistics = logi}
+	   end
+	 end
 		blueprintStack.set_blueprint_entities(blueprintData.entities)
 		--debugLog(serpent.block(blueprintData.icons))
 		local newTable = {}
@@ -736,6 +778,11 @@ function setBlueprintData(blueprintStack, blueprintData)
 	end
 	return false
 end
+  function saveVar(var, name)
+    local var = var or glob
+    local n = name or ""
+    game.makefile("farl/farl"..n..".lua", serpent.block(var, {name="glob"}))
+  end
 
 function getBlueprintData(blueprintStack)
 	if blueprintStack ~= nil and blueprintStack.is_blueprint_setup() then
@@ -780,8 +827,8 @@ end
 -- [13:19:25] <Rseding91|H> write: health, durability, blueprint_icons
 -- [13:19:36] <Rseding91|H> methods: is_blueprint_setup(), get_blueprint_entities(), set_blueprint_entities()
 
-function debugLog(message)
-	if false then -- set for debug
+function debugLog(message, force)
+	if false or force then -- set for debug
 		for i,player in ipairs(game.players) do
 			player.print(message)
 		end
