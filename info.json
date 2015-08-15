@@ -1,9 +1,8 @@
 {
 	"name":"Foreman",
-	"author":"JamesOFarrell",
-	"version":"0.0.5",
+	"author":"Choumiko (originally: JamesOFarrell)",
+	"version":"0.0.6",
 	"title":"Foreman",
-	"homepage":"http://localhost/",
 	"description":"For managing all your blueprint needs.",
 	"dependencies": ["base >= 0.12.1"]
 } 

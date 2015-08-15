@@ -306,7 +306,7 @@ game.on_event(defines.events.on_gui_click, function(event)
 		if blueprintIndex ~= nil then
 			blueprintIndex = tonumber(blueprintIndex)
 			local player = game.players[event.element.player_index]
-			local blueprint = findBlueprintInHotbar(player)
+			local blueprint = findEmptyBlueprintInHotbar(player)
 			local blueprintData = global.blueprints[blueprintIndex]
 			
 			if blueprint ~= nil and blueprintData ~= nil then
@@ -575,6 +575,17 @@ function findSetupBlueprintInHotbar(player)
 	end
 end
 
+function findEmptyBlueprintInHotbar(player)
+  local blueprints = findBlueprintsInHotbar(player)
+  if blueprints ~= nil then
+    for i, blueprint in ipairs(blueprints) do
+      if not blueprint.is_blueprint_setup() then
+        return blueprint
+      end
+    end
+  end
+end
+
 function findBlueprintInHotbar(player)
 	local blueprints = findBlueprintsInHotbar(player)
 	if blueprints ~= nil and blueprints[1] ~= nil then
@@ -585,7 +596,7 @@ end
 function findBlueprintsInHotbar(player)
 	local blueprints = {}
 	if player ~= nil then
-		local hotbar = player.get_inventory(1)
+		local hotbar = player.get_inventory(defines.inventory.player_quickbar)
 		if hotbar ~= nil then
 			local i = 1
 			while (i < 30) do
@@ -797,6 +808,7 @@ end
 
 function convertToRecipeName(entities) 
 	if entities ~= nil then
+	   --debugLog(serpent.dump(entities),true)
 		for i,entity in ipairs(entities) do
 			if entity.recipe ~= nil then
 				if entity.recipe.valid then 
