@@ -1,4 +1,5 @@
 require "defines"
+require "util"
 deflate = require "lmod/deflatelua"
 base64 = require "lmod/base64"
 require "config"
@@ -224,7 +225,7 @@ game.on_event(defines.events.on_gui_click, function(event)
       local blueprintData = global.blueprints[blueprintIndex]
 
       if blueprint ~= nil and blueprintData ~= nil then
-        local status, err = pcall(function() setBlueprintData(blueprint, blueprintData) end )
+        local status, err = pcall(function() setBlueprintData(player.force, blueprint, blueprintData) end )
         if status then
           player.print({"msg-blueprint-loaded"})
         else
@@ -472,7 +473,6 @@ end
 
 function testBlueprint(blueprint)
   local entities = blueprint.get_blueprint_entities()
-  convertToRecipeName(entities)
   return pcall(function () blueprint.set_blueprint_entities(entities) end)
 end
 
@@ -650,51 +650,19 @@ function createDisplayCountWindow(gui, displayCount)
   end
 end
 
-function setBlueprintData(blueprintStack, blueprintData)
+--write to blueprint
+function setBlueprintData(force, blueprintStack, blueprintData)
   if blueprintStack ~= nil then
-    -- convert 0.11 blueprints to 0.12
-    local ent = blueprintData.entities
-    for _, entity in pairs(ent) do
-      if entity.entitynumber then
-        entity.entity_number = entity.entitynumber
-        entity.entitynumber = nil
-      end
-      if entity.connections and not entity.connections["1"] then
-        local newConn = {["1"] = {}}
-        for color, c in pairs(entity.connections) do
-          if color == "red" or color == "green" then
-            newConn["1"][color] = {}
-            for _, ci in pairs(c) do
-              table.insert(newConn["1"][color], {entity_id = c[1]})
-            end
-          end
+    --remove unresearched/invalid recipes
+    local entities = util.table.deepcopy(blueprintData.entities)
+    for _, entity in pairs(entities) do
+      if entity.recipe then
+        if not force.recipes[entity.recipe] or not force.recipes[entity.recipe].enabled then
+          entity.recipe = nil
         end
-        entity.connections = newConn
-      end
-      if entity.conditions and not entity.conditions.circuit then
-        local newCond = {red=false,green=false}
-        local logi = {}
-        for color, cond in pairs(entity.conditions) do
-          if color == "red" or color == "green" then
-            newCond[color] = {}
-            newCond[color].first_signal = {type="item", name=cond.name}
-            newCond[color].constant = cond.count
-            newCond[color].comparator = cond.operator
-          end
-          if color == "logistics" then
-            logi.first_signal = {type="item", name=cond.name}
-            logi.constant = cond.count
-            logi.comparator = cond.operater
-          end
-        end
-        if newCond.red and newCond.green then
-          newCond = newCond.red
-        end
-        entity.conditions = nil
-        entity.conditions = {circuit = newCond, logistics = logi}
       end
     end
-    blueprintStack.set_blueprint_entities(blueprintData.entities)
+    blueprintStack.set_blueprint_entities(entities)
     --debugLog(serpent.block(blueprintData.icons))
     local newTable = {}
     for i = 0, #blueprintData.icons do
@@ -710,8 +678,8 @@ end
 
 function saveVar(var, name)
   local var = var or glob
-  local n = name or ""
-  game.makefile("farl/farl"..n..".lua", serpent.block(var, {name="glob"}))
+  local n = name or "foreman"
+  game.makefile("blueprint-string/"..n..".lua", serpent.block(var, {name="glob"}))
 end
 
 function getBlueprintData(blueprintStack)
@@ -719,25 +687,9 @@ function getBlueprintData(blueprintStack)
     local data = {}
     data.icons = blueprintStack.blueprint_icons
     data.entities = blueprintStack.get_blueprint_entities()
-    convertToRecipeName(data.entities)
     return data
   end
   return nil
-end
-
-function convertToRecipeName(entities)
-  if entities ~= nil then
-    --debugLog(serpent.dump(entities),true)
-    for i,entity in ipairs(entities) do
-      if entity.recipe ~= nil then
-        if entity.recipe.valid then
-          entity.recipe = entity.recipe.name
-        else
-          entity.recipe = nil
-        end
-      end
-    end
-  end
 end
 
 function split(stringA, sep)
