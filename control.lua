@@ -6,16 +6,16 @@ require "config"
 
 defaultBook = require "defaultBook"
 
-local onsave = false
-
-function init()
-  --why do this here and not somewhere sane?
+function initGlob()
   if global.blueprints == nil then
     global.blueprints = {}
   end
   if global.guiSettings == nil then
     global.guiSettings = {}
   end
+end
+
+function init()
   --if #global.guiSettings < #game.players then
   for i,player in ipairs(game.players) do
     if global.guiSettings[i] == nil then
@@ -40,14 +40,14 @@ onTickEvent_long = function(event)
   if event.tick % 300 == 20 then
     init()
     if global.unlocked then
-      game.on_event(defines.events.on_tick, nil)
+      script.on_event(defines.events.on_tick, nil)
       createBlueprintButtons(game.players, global.guiSettings)
     end
   end
 end
 
 onTickEvent_destroy = function(event)
-  game.on_event(defines.events.on_tick, global.onTickEvent)
+  script.on_event(defines.events.on_tick, global.onTickEvent)
   for i, window in ipairs(global.destroy) do
     if window then
       window.destroy()
@@ -63,31 +63,27 @@ ontickEvent = function(event)
     if global.unlocked then
       debugLog("Unlocked")
       createBlueprintButtons(game.players, global.guiSettings)
-      game.on_event(defines.events.on_tick, nil)
+      script.on_event(defines.events.on_tick, nil)
     else
-      game.on_event(defines.events.on_tick, onTickEvent_long)
+      script.on_event(defines.events.on_tick, onTickEvent_long)
     end
     global.recreateGuiAtTick = nil
   end
 end
 
-game.on_event(defines.events.on_tick, ontickEvent)
+script.on_event(defines.events.on_tick, ontickEvent)
 
-game.on_save(function()
-  game.on_event(defines.events.on_tick, ontickEvent)
-  global.recreateGuiAtTick = game.tick + 60
-end)
+script.on_init(initGlob)
+script.on_load(initGlob)
 
-game.on_load(function()
-  end)
-
-game.on_event(defines.events.on_player_created, function(event)
+script.on_event(defines.events.on_player_created, function(event)
   debugLog("OnPlayerCreated")
 end)
 
-game.on_event(defines.events.on_research_finished, function(event)
+script.on_event(defines.events.on_research_finished, function(event)
   if event.research ~= nil and event.research.name == "automated-construction" then
     init()
+    --createBlueprintButtons(event.research.force.players, global.guiSettings)
     createBlueprintButtons(game.players, global.guiSettings)
   end
 end)
@@ -139,7 +135,7 @@ function createBlueprintButton(player, guiSettings)
   end
 end
 
-game.on_event(defines.events.on_gui_click, function(event)
+script.on_event(defines.events.on_gui_click, function(event)
   local refreshWindow = false
   local refreshWindows = false
 
@@ -208,11 +204,11 @@ game.on_event(defines.events.on_gui_click, function(event)
       blueprintIndex = tonumber(blueprintIndex)
       local player = game.players[event.element.player_index]
       local blueprint = findEmptyBlueprintInHotbar(player)
-      
+
       if not blueprint and config.overwrite then
         blueprint = findBlueprintInHotbar(player)
         if blueprint and config.useCircuit then
-          if player.get_item_count("electronic-circuit") > 0 then 
+          if player.get_item_count("electronic-circuit") > 0 then
             player.remove_item{name="electronic-circuit", count=1}
           else
             player.print({"msg-no-circuit"})
@@ -221,7 +217,7 @@ game.on_event(defines.events.on_gui_click, function(event)
           end
         end
       end
-      
+
       local blueprintData = global.blueprints[blueprintIndex]
 
       if blueprint ~= nil and blueprintData ~= nil then
@@ -266,8 +262,8 @@ game.on_event(defines.events.on_gui_click, function(event)
         --debugLog("Player: " .. player.name .. " : " .. event.element.player_index)
         --filename = "blueprints/" .. filename .. ".blueprint"
         --filename64 = "blueprints/" .. blueprintData.name .. "64.blueprint"
-        game.makefile(filename , stringOutput)
-        --game.makefile(filename64, out)
+        game.write_file(filename , stringOutput)
+        --game.write_file(filename64, out)
         player.print({"msg-export-blueprint"})
         player.print("File: script-output/" .. filename)
       else
@@ -304,13 +300,14 @@ game.on_event(defines.events.on_gui_click, function(event)
         if blueprint == nil then
           player.print({"msg-no-blueprint"})
         else
-          local status, err = testBlueprint(blueprint)
-          if not status then
-            player.print({"msg-import-blueprint-fail"})
-            player.print(err)
-          else
-            blueprintData = getBlueprintData(blueprint)
-          end
+          --          local status, err = testBlueprint(blueprint)
+          --          if not status then
+          --            player.print({"msg-import-blueprint-fail"})
+          --            player.print(err)
+          --          else
+          blueprintData = getBlueprintData(blueprint)
+          saveVar(blueprintData,"import")
+          --end
         end
       else
         blueprintData = deserializeBlueprintData(trim(importString))
@@ -454,7 +451,7 @@ end
 function destroyWindowNextTick(window) -- THIS IS A HACK TO WORKAROUND A GUI TIMING BUG IN FACTORIO
   if global.destroy == nil then
     global.destroy = {}
-    game.on_event(defines.events.on_tick, onTickEvent_destroy)
+    script.on_event(defines.events.on_tick, onTickEvent_destroy)
 end
 table.insert(global.destroy, window)
 end
@@ -473,6 +470,7 @@ end
 
 function testBlueprint(blueprint)
   local entities = blueprint.get_blueprint_entities()
+  saveVar(entities, "test")
   return pcall(function () blueprint.set_blueprint_entities(entities) end)
 end
 
@@ -662,8 +660,10 @@ function setBlueprintData(force, blueprintStack, blueprintData)
         end
       end
     end
+    saveVar(entities, "test")
     blueprintStack.set_blueprint_entities(entities)
-    --debugLog(serpent.block(blueprintData.icons))
+    saveVar(blueprintStack.get_blueprint_entities(), "test2")
+    --debugDump(serpent.block(blueprintData.entities),true)
     local newTable = {}
     for i = 0, #blueprintData.icons do
       if blueprintData.icons[i] then
@@ -677,9 +677,9 @@ function setBlueprintData(force, blueprintStack, blueprintData)
 end
 
 function saveVar(var, name)
-  local var = var or glob
+  local var = var or global
   local n = name or "foreman"
-  game.makefile("blueprint-string/"..n..".lua", serpent.block(var, {name="glob"}))
+  game.write_file("blueprint-string/"..n..".lua", serpent.block(var, {name="glob"}))
 end
 
 function getBlueprintData(blueprintStack)
@@ -687,6 +687,7 @@ function getBlueprintData(blueprintStack)
     local data = {}
     data.icons = blueprintStack.blueprint_icons
     data.entities = blueprintStack.get_blueprint_entities()
+    saveVar(data.entities, "import1")
     return data
   end
   return nil
@@ -715,6 +716,20 @@ function debugLog(message, force)
     for i,player in ipairs(game.players) do
       player.print(message)
   end
+  end
+end
+
+function debugDump(var, force)
+  if false or force then
+    for i,player in pairs(game.players) do
+      local msg
+      if type(var) == "string" then
+        msg = var
+      else
+        msg = serpent.dump(var, {name="var", comment=false, sparse=false, sortkeys=true})
+      end
+      player.print(msg)
+    end
   end
 end
 
@@ -758,15 +773,15 @@ function trim(s)
 end
 
 function saveToBook(player)
-  game.makefile("blueprints/defaultBookPreSave.lua", serpent.dump(defaultBook, {name="blueprints"}))
-  game.makefile("blueprints/defaultBook.lua", serpent.dump(global.blueprints, {name="blueprints"}))
+  game.write_file("blueprints/defaultBookPreSave.lua", serpent.dump(defaultBook, {name="blueprints"}))
+  game.write_file("blueprints/defaultBook.lua", serpent.dump(global.blueprints, {name="blueprints"}))
   player.print(#global.blueprints.." blueprints exported")
-  --game.makefile("farl/loco"..n..".lua", serpent.block(findAllEntitiesByType("locomotive")))
+  --game.write_file("farl/loco"..n..".lua", serpent.block(findAllEntitiesByType("locomotive")))
 end
 
 function loadFromBook(player)
   if #defaultBook > 0 then
-    game.makefile("blueprints/defaultBookpreLoad.lua", serpent.dump(global.blueprints, {name="blueprints"}))
+    game.write_file("blueprints/defaultBookpreLoad.lua", serpent.dump(global.blueprints, {name="blueprints"}))
     global.blueprints = defaultBook
     table.sort(global.blueprints, sortBlueprint)
     player.print(#global.blueprints.." blueprints imported")
@@ -774,3 +789,11 @@ function loadFromBook(player)
     player.print("No blueprints found, skipped loading.")
   end
 end
+
+remote.add_interface("foreman",
+  {
+    saveVar = function(name)
+      saveVar(global, name)
+    end,
+
+  })
