@@ -3,48 +3,120 @@ require "util"
 deflate = require "lmod/deflatelua"
 base64 = require "lmod/base64"
 require "config"
-
+MOD_NAME = "Foreman"
 defaultBook = require "defaultBook"
 
-function initGlob()
-  if global.blueprints == nil then
-    global.blueprints = {}
-  end
-  if global.guiSettings == nil then
-    global.guiSettings = {}
-  end
+local function init_global()
+  global.blueprints = global.blueprints or {}
+  global.guiSettings = global.guiSettings or {}
+  global.unlocked = global.unlocked or {}
 end
 
-function init()
-  --if #global.guiSettings < #game.players then
-  for i,player in ipairs(game.players) do
-    if global.guiSettings[i] == nil then
-      global.guiSettings[i] = {page = 1, blueprintCount = 0, displayCount = 10}
-    end
-  end
-  --end
-  if global.tech == nil or not global.tech.valid then
-    for i,player in ipairs(game.players) do
-      if player.character ~= nil then
-        global.tech = player.character.force.technologies["automated-construction"]
+local function init_player(player)
+  local i = player.index
+  global.guiSettings[i] = global.guiSettings[i] or {page = 1, blueprintCount = 0, displayCount = 10}
+end
+
+local function init_players(recreate_gui)
+  for i,player in pairs(game.players) do
+    init_player(player)
+    if recreate_gui then
+      if global.unlocked[player.force.name] then
+        createBlueprintButton(player,global.guiSettings[i])
       end
     end
-  else
-    if global.tech.researched then
-      global.unlocked = true
+  end
+end
+
+local function init_force(force)
+  global.unlocked[force.name] = force.technologies["automated-construction"].researched
+end
+
+local function init_forces()
+  for i, force in pairs(game.forces) do
+    init_force(force)
+  end
+end
+
+local function on_init()
+  init_global()
+  init_forces()
+end
+
+local function on_load()
+-- set metatables, register conditional event handlers, local references to global
+end
+
+-- run once
+local function on_configuration_changed(data)
+  if not data or not data.mod_changes then
+    return
+  end
+  if data.mod_changes[MOD_NAME] then
+    local newVersion = data.mod_changes[MOD_NAME].new_version
+    local oldVersion = data.mod_changes[MOD_NAME].old_version
+    -- mod was added to existing save
+    if not oldVersion then
+      init_global()
+      init_forces()
+      init_players()
+    else
+      --mod was updated
+      -- update/change gui for all players via game.players.gui ?
+      if oldVersion < "0.1.0" then
+        init_forces()
+        init_players()
+      end
+    end
+  end
+  --check for other mods
+end
+
+local function on_player_created(event)
+  local player = game.players[event.player_index] 
+  init_player(player)
+  if global.unlocked[player.force.name] then
+    createBlueprintButton(player,global.guiSettings[player.index])
+  end
+end
+
+local function on_force_created(event)
+  init_force(event.force)
+end
+local function on_forces_merging(event)
+
+end
+
+local function createBlueprintButton(player, guiSettings)
+  if player.valid then
+    local topGui = player.gui.top
+    if not topGui.blueprintTools  then
+      topGui.add({type="button", name="blueprintTools", caption = {"btn-blueprint-main"}, style="blueprint_button_style"})
+      guiSettings.foremanVisable = true
     end
   end
 end
 
-onTickEvent_long = function(event)
-  if event.tick % 300 == 20 then
-    init()
-    if global.unlocked then
-      script.on_event(defines.events.on_tick, nil)
-      createBlueprintButtons(game.players, global.guiSettings)
-    end
+local function createBlueprintButtons(force)
+  for i, player in pairs(force.players) do
+    createBlueprintButton(player, global.guiSettings[player.index])
   end
 end
+
+local function on_research_finished(event)
+  if event.research ~= nil and event.research.name == "automated-construction" then
+    global.unlocked[event.research.force.name] = true
+    createBlueprintButtons(event.research.force)
+  end
+end
+
+script.on_init(on_init)
+script.on_load(on_load)
+script.on_configuration_changed(on_configuration_changed)
+script.on_event(defines.events.on_player_created, on_player_created)
+script.on_event(defines.events.on_force_created, on_force_created)
+script.on_event(defines.events.on_forces_merging, on_forces_merging)
+script.on_event(defines.events.on_research_finished, on_research_finished)
 
 onTickEvent_destroy = function(event)
   script.on_event(defines.events.on_tick, global.onTickEvent)
@@ -56,40 +128,8 @@ onTickEvent_destroy = function(event)
   global.destroy = nil
 end
 
-ontickEvent = function(event)
-  if global.recreateGuiAtTick == nil or (event.tick %15 == 14 and global.recreateGuiAtTick < event.tick) then
-    debugLog("OnTick")
-    init()
-    if global.unlocked then
-      debugLog("Unlocked")
-      createBlueprintButtons(game.players, global.guiSettings)
-      script.on_event(defines.events.on_tick, nil)
-    else
-      script.on_event(defines.events.on_tick, onTickEvent_long)
-    end
-    global.recreateGuiAtTick = nil
-  end
-end
-
-script.on_event(defines.events.on_tick, ontickEvent)
-
-script.on_init(initGlob)
-script.on_load(initGlob)
-
-script.on_event(defines.events.on_player_created, function(event)
-  debugLog("OnPlayerCreated")
-end)
-
-script.on_event(defines.events.on_research_finished, function(event)
-  if event.research ~= nil and event.research.name == "automated-construction" then
-    init()
-    --createBlueprintButtons(event.research.force.players, global.guiSettings)
-    createBlueprintButtons(game.players, global.guiSettings)
-  end
-end)
-
 function getPlayerIndexFromUsername(username)
-  for i, player in ipairs(players) do
+  for i, player in pairs(game.players) do
     if player ~= nil and player.name == username then
       return i
     end
@@ -118,19 +158,6 @@ function destroyGuis(player, guiSettings)
     if player.gui.top.blueprintTools then
       guiSettings.foremanVisable = false
       player.gui.top.blueprintTools.destroy()
-    end
-  end
-end
-
-function createBlueprintButton(player, guiSettings)
-  if player ~= nil then
-    debugLog("player not nil")
-    local topGui = player.gui.top
-    if not topGui.blueprintTools  then
-      debugLog(player.name)
-      debugLog("create button")
-      topGui.add({type="button", name="blueprintTools", caption = {"btn-blueprint-main"}, style="blueprint_button_style"})
-      guiSettings.foremanVisable = true
     end
   end
 end
@@ -397,8 +424,8 @@ function sortBlueprint(blueprintA, blueprintB)
 end
 
 function serializeBlueprintData(blueprintData)
-  if blueprintData ~= nil and blueprintData.icons ~= nil and blueprintData.entities ~= nil then
-    return serpent.dump(blueprintData, {name="blueprintData"})
+  if blueprintData ~= nil and blueprintData.icons ~= nil and (blueprintData.entities ~= nil or blueprintData.tiles ~= nil) then
+    return serpent.block(blueprintData, {name="blueprintData"})
   end
   return nil
 end
@@ -472,12 +499,6 @@ function testBlueprint(blueprint)
   local entities = blueprint.get_blueprint_entities()
   saveVar(entities, "test")
   return pcall(function () blueprint.set_blueprint_entities(entities) end)
-end
-
-function createBlueprintButtons(players, guiSettings)
-  for i, player in ipairs(game.players) do
-    createBlueprintButton(player, guiSettings[i])
-  end
 end
 
 function findSetupBlueprintInHotbar(player)
@@ -653,6 +674,7 @@ function setBlueprintData(force, blueprintStack, blueprintData)
   if blueprintStack ~= nil then
     --remove unresearched/invalid recipes
     local entities = util.table.deepcopy(blueprintData.entities)
+    local tiles = blueprintData.tiles
     for _, entity in pairs(entities) do
       if entity.recipe then
         if not force.recipes[entity.recipe] or not force.recipes[entity.recipe].enabled then
@@ -662,7 +684,8 @@ function setBlueprintData(force, blueprintStack, blueprintData)
     end
     saveVar(entities, "test")
     blueprintStack.set_blueprint_entities(entities)
-    saveVar(blueprintStack.get_blueprint_entities(), "test2")
+    blueprintStack.set_blueprint_tiles(tiles)
+    saveVar({e=blueprintStack.get_blueprint_entities(),t=blueprintStack.get_blueprint_tiles()}, "test2")
     --debugDump(serpent.block(blueprintData.entities),true)
     local newTable = {}
     for i = 0, #blueprintData.icons do
@@ -687,7 +710,8 @@ function getBlueprintData(blueprintStack)
     local data = {}
     data.icons = blueprintStack.blueprint_icons
     data.entities = blueprintStack.get_blueprint_entities()
-    saveVar(data.entities, "import1")
+    data.tiles = blueprintStack.get_blueprint_tiles()
+    --saveVar(data.entities, "import1")
     return data
   end
   return nil
@@ -713,7 +737,7 @@ end
 
 function debugLog(message, force)
   if false or force then -- set for debug
-    for i,player in ipairs(game.players) do
+    for i,player in pairs(game.players) do
       player.print(message)
   end
   end
