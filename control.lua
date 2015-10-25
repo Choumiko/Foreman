@@ -67,6 +67,7 @@ local function on_configuration_changed(data)
         local tmp = util.table.deepcopy(global.blueprints)
         saveVar(global.blueprints, "pre_0.1.0")
         global.blueprints = {}
+        global.unlocked = {}
         init_forces()
         init_players()
         for i, p in pairs(game.players) do
@@ -125,16 +126,6 @@ script.on_event(defines.events.on_force_created, on_force_created)
 script.on_event(defines.events.on_forces_merging, on_forces_merging)
 script.on_event(defines.events.on_research_finished, on_research_finished)
 
-onTickEvent_destroy = function(event)
-  script.on_event(defines.events.on_tick, nil)
-  for i, window in ipairs(global.destroy) do
-    if window then
-      window.destroy()
-    end
-  end
-  global.destroy = nil
-end
-
 function getPlayerIndexFromUsername(username)
   for i, player in pairs(game.players) do
     if player ~= nil and player.name == username then
@@ -173,6 +164,7 @@ local function on_gui_click(event)
   local refreshWindow = false
   local refreshWindows = false
   local player = game.players[event.element.player_index]
+  local guiSettings = global.guiSettings[event.element.player_index]
   if event.element.name == "blueprintTools" or event.element.name == "blueprintClose" then
     if player ~= nil then
       if player.gui.left.blueprintWindow == nil then
@@ -182,20 +174,17 @@ local function on_gui_click(event)
       end
     end
   elseif event.element.name == "blueprintPageBack" then
-    local guiSettings = global.guiSettings[event.element.player_index]
     if guiSettings.page > 1 then
       guiSettings.page = guiSettings.page - 1
       refreshWindow = true
     end
   elseif event.element.name == "blueprintPageForward" then
-    local guiSettings = global.guiSettings[event.element.player_index]
     local lastPage = getLastPage(guiSettings.displayCount, #global.blueprints[player.index])
     if guiSettings.page < lastPage then
       guiSettings.page = guiSettings.page + 1
       refreshWindow = true
     end
   elseif event.element.name == "blueprintDisplayCount" then
-    local guiSettings = global.guiSettings[event.element.player_index]
     if not guiSettings.displayCountWindowVisable then
       guiSettings.displayCountWindow = createDisplayCountWindow(game.players[event.element.player_index].gui.center, guiSettings.displayCount)
       guiSettings.displayCountWindowVisable = true
@@ -204,7 +193,6 @@ local function on_gui_click(event)
       guiSettings.displayCountWindowVisable = false
     end
   elseif event.element.name == "blueprintNew" or event.element.name == "blueprintNewCancel" then
-    local guiSettings = global.guiSettings[event.element.player_index]
     if not guiSettings.newWindowVisable then
       local num = (#global.blueprints[player.index] + 1) .. ""
       if string.len(num) < 2 then
@@ -306,7 +294,6 @@ local function on_gui_click(event)
   elseif endsWith(event.element.name, "_blueprintInfoRename") then
     local data = split(event.element.name,"_")
     local blueprintIndex = data[1]
-    local guiSettings = global.guiSettings[event.element.player_index]
     if blueprintIndex ~= nil and guiSettings ~= nil then
       blueprintIndex = tonumber(blueprintIndex)
       if guiSettings.renameWindowVisable then
@@ -316,8 +303,6 @@ local function on_gui_click(event)
       guiSettings.renameWindow = createRenameWindow(game.players[event.element.player_index].gui.center, blueprintIndex, global.blueprints[player.index][blueprintIndex].name)
     end
   elseif event.element.name == "blueprintNewImport" then
-    local guiSettings = global.guiSettings[event.element.player_index]
-    local player = game.players[event.element.player_index]
     if guiSettings.newWindowVisable then
       local name = guiSettings.newWindow.blueprintNewNameFlow.blueprintNewNameText.text
       if name == nil or name == "" then
@@ -363,13 +348,11 @@ local function on_gui_click(event)
       end
     end
   elseif event.element.name == "blueprintRenameCancel" then
-    local guiSettings = global.guiSettings[event.element.player_index]
     if guiSettings.renameWindowVisable then
       guiSettings.renameWindow.destroy()
       guiSettings.renameWindowVisable = false
     end
   elseif endsWith(event.element.name,"_blueprintRenameOK") then
-    local guiSettings = global.guiSettings[event.element.player_index]
     local data = split(event.element.name,"_")
     local blueprintIndex = data[1]
     debugLog(blueprintIndex)
@@ -388,7 +371,6 @@ local function on_gui_click(event)
       end
     end
   elseif event.element.name == "blueprintDisplayCountOK" then
-    local guiSettings = global.guiSettings[event.element.player_index]
     if guiSettings.displayCountWindowVisable then
       local newInt = tonumber(guiSettings.displayCountWindow.blueprintDisplayCountText.text)
       if newInt then
@@ -401,7 +383,7 @@ local function on_gui_click(event)
         guiSettings.page = 1
         refreshWindow = true
       else
-        game.players[event.element.player_index].print({"msg-notanumber"})
+        player.print({"msg-notanumber"})
       end
       destroyWindowNextTick(guiSettings.displayCountWindow)
       guiSettings.displayCountWindowVisable = false
@@ -411,10 +393,10 @@ local function on_gui_click(event)
 
 
   if refreshWindow then
-    createBlueprintWindow(game.players[event.element.player_index], global.blueprints[player.index], global.guiSettings[event.element.player_index])
+    createBlueprintWindow(player, global.blueprints[player.index], global.guiSettings[event.element.player_index])
   end
   if refreshWindows then
-    for i,player in ipairs(game.players) do
+    for i,player in pairs(game.players) do
       if global.guiSettings[i].windowVisable then
         createBlueprintWindow(player, global.blueprints[player.index], global.guiSettings[i])
       end
@@ -485,12 +467,22 @@ function deserializeBlueprintData(dataString)
   return nil
 end
 
+onTickEvent_destroy = function(event)
+  script.on_event(defines.events.on_tick, nil)
+  for i, window in ipairs(global.destroy) do
+    if window then
+      window.destroy()
+    end
+  end
+  global.destroy = nil
+end
+
 function destroyWindowNextTick(window) -- THIS IS A HACK TO WORKAROUND A GUI TIMING BUG IN FACTORIO
   if global.destroy == nil then
     global.destroy = {}
     script.on_event(defines.events.on_tick, onTickEvent_destroy)
-end
-table.insert(global.destroy, window)
+  end
+  table.insert(global.destroy, window)
 end
 
 function cleanupName(name)
