@@ -60,7 +60,7 @@ local function on_configuration_changed(data)
     if not oldVersion then
       init_global()
       init_forces()
-      init_players()
+      init_players(true)
     else
       --mod was updated
       if oldVersion < "0.1.1" then
@@ -74,18 +74,28 @@ local function on_configuration_changed(data)
         for i, p in pairs(game.players) do
           global.guiSettings[i].blueprintCount = nil
         end
+        if oldVersion < "0.1.0" then
         for i,f in pairs(game.forces) do
           if not config.ignoreForces[f.name] then
             global.blueprints[f.name] = util.table.deepcopy(tmp)
           end
         end
+        elseif oldVersion == "0.1.0" then
+          for i,p in pairs(game.players) do
+            local f = p.force.name
+            for _, bp in pairs(tmp[i]) do
+              table.insert(global.blueprints[f], util.table.deepcopy(bp))
+            end
+          end
+        end
+        saveVar(global.blueprints, "post_0.1.1")
       end
     end
   end
   --check for other mods
 end
 
-local function createBlueprintButton(player, guiSettings)
+function createBlueprintButton(player, guiSettings)
   if player.valid then
     local topGui = player.gui.top
     if not topGui.blueprintTools  then
@@ -130,6 +140,10 @@ script.on_event(defines.events.on_player_created, on_player_created)
 script.on_event(defines.events.on_force_created, on_force_created)
 script.on_event(defines.events.on_forces_merging, on_forces_merging)
 script.on_event(defines.events.on_research_finished, on_research_finished)
+script.on_event(defines.events.on_gui_click, function(event)
+  local status, err = pcall(on_gui_click, event)
+  if not status then debugDump(err,true) end
+end)
 
 function getPlayerIndexFromUsername(username)
   for i, player in pairs(game.players) do
@@ -289,7 +303,7 @@ local function on_gui_click(event)
         --local base64string = base64.encode(out)
         local filename = blueprintData.name
         if filename == nil or filename == "" then
-          filname = "export"
+          filename = "export"
         end
         if player.name ~= "" then
           filename = "blueprints/" .. player.name .. "_" .. filename .. ".blueprint"
@@ -381,9 +395,10 @@ local function on_gui_click(event)
           local blueprintData = global.blueprints[player.force.name][blueprintIndex]
           local oldName = blueprintData.name
           blueprintData.name = newName
-          --print_to_force(player.force, {"msg-blueprint-renamed", player.name, oldName, newName})
-          print_to_force(player.force, player.name.." renamed "..oldName.." to "..newName)
-          destroyWindowNextTick(guiSettings.renameWindow)
+          print_to_force(player.force, {"msg-blueprint-renamed", player.name, oldName, newName})
+          --print_to_force(player.force, player.name.." renamed "..oldName.." to "..newName)
+          --destroyWindowNextTick(guiSettings.renameWindow)
+          guiSettings.renameWindow.destroy()
           guiSettings.renameWindowVisable = false
           refreshWindows = true
         end
@@ -420,11 +435,6 @@ local function on_gui_click(event)
     end
   end
 end
-
-script.on_event(defines.events.on_gui_click, function(event)
-  local status, err = pcall(on_gui_click, event)
-  if not status then debugDump(err,true) end
-end)
 
 function sortBlueprint(blueprintA, blueprintB)
   if blueprintA.name < blueprintB.name then
@@ -495,11 +505,14 @@ onTickEvent_destroy = function(event)
 end
 
 function destroyWindowNextTick(window) -- THIS IS A HACK TO WORKAROUND A GUI TIMING BUG IN FACTORIO
-  if global.destroy == nil then
-    global.destroy = {}
-    script.on_event(defines.events.on_tick, onTickEvent_destroy)
-end
-table.insert(global.destroy, window)
+  --if global.destroy == nil then
+    --global.destroy = {}
+    --script.on_event(defines.events.on_tick, onTickEvent_destroy)
+  --end
+  if window and window.valid then
+    window.destroy()
+  end
+--table.insert(global.destroy, window)
 end
 
 function cleanupName(name)
@@ -845,7 +858,7 @@ remote.add_interface("foreman",
       global.shared_blueprints = {}
       init_global()
       init_forces()
-      init_players()
+      init_players(true)
     end
 
   })
