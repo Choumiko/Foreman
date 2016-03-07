@@ -29,6 +29,9 @@ local function init_players(recreate_gui)
 end
 
 local function init_force(force)
+  if not global.unlocked then
+    init_global()
+  end
   global.unlocked[force.name] = force.technologies["automated-construction"].researched
   global.blueprints[force.name] = global.blueprints[force.name] or {}
 end
@@ -140,10 +143,6 @@ script.on_event(defines.events.on_player_created, on_player_created)
 script.on_event(defines.events.on_force_created, on_force_created)
 script.on_event(defines.events.on_forces_merging, on_forces_merging)
 script.on_event(defines.events.on_research_finished, on_research_finished)
-script.on_event(defines.events.on_gui_click, function(event)
-  local status, err = pcall(on_gui_click, event)
-  if not status then debugDump(err,true) end
-end)
 
 function getPlayerIndexFromUsername(username)
   for i, player in pairs(game.players) do
@@ -186,255 +185,260 @@ function destroyGuis(player, guiSettings)
 end
 
 local function on_gui_click(event)
-  local refreshWindow = false
-  local refreshWindows = false
-  local player = game.players[event.element.player_index]
-  local guiSettings = global.guiSettings[event.element.player_index]
-  if event.element.name == "blueprintTools" or event.element.name == "blueprintClose" then
-    if player ~= nil then
-      if player.gui.left.blueprintWindow == nil then
-        refreshWindow = true
-      else
-        player.gui.left.blueprintWindow.destroy()
-        if remote.interfaces.YARM and guiSettings.YARM_old_expando then
-          remote.call("YARM", "show_expando", player.index)
-        end
-      end
-    end
-  elseif event.element.name == "blueprintPageBack" then
-    if guiSettings.page > 1 then
-      guiSettings.page = guiSettings.page - 1
-      refreshWindow = true
-    end
-  elseif event.element.name == "blueprintPageForward" then
-    local lastPage = getLastPage(guiSettings.displayCount, #global.blueprints[player.force.name])
-    if guiSettings.page < lastPage then
-      guiSettings.page = guiSettings.page + 1
-      refreshWindow = true
-    end
-  elseif event.element.name == "blueprintDisplayCount" then
-    if not guiSettings.displayCountWindowVisable then
-      guiSettings.displayCountWindow = createDisplayCountWindow(game.players[event.element.player_index].gui.center, guiSettings.displayCount)
-      guiSettings.displayCountWindowVisable = true
-    else
-      guiSettings.displayCountWindow.destroy()
-      guiSettings.displayCountWindowVisable = false
-    end
-  elseif event.element.name == "blueprintNew" or event.element.name == "blueprintNewCancel" then
-    if not guiSettings.newWindowVisable then
-      local num = (#global.blueprints[player.force.name] + 1) .. ""
-      if string.len(num) < 2 then
-        num = "0" .. num
-      end
-      guiSettings.newWindow = createNewBlueprintWindow(game.players[event.element.player_index].gui.center, "_New " .. num)
-      guiSettings.newWindowVisable = true
-    else
-      guiSettings.newWindow.destroy()
-      guiSettings.newWindowVisable = false
-    end
-  elseif event.element.name == "blueprintExportAll" then
-    saveToBook(game.players[event.element.player_index])
-  elseif event.element.name == "blueprintLoadAll" then
-    loadFromBook(game.players[event.element.player_index])
-    refreshWindows = true
-  elseif endsWith(event.element.name, "_blueprintInfoDelete") then
-    local data = split(event.element.name,"_")
-    local blueprintIndex = data[1]
-    if blueprintIndex ~= nil then
-      blueprintIndex = tonumber(blueprintIndex)
-      debugLog(blueprintIndex)
-      --print_to_force(player.force,{"msg-blueprint-deleted", player.name, global.blueprints[player.force.name][blueprintIndex].name})
-      print_to_force(player.force, player.name.." deleted "..global.blueprints[player.force.name][blueprintIndex].name)
-      table.remove(global.blueprints[player.force.name], blueprintIndex)
-      refreshWindows = true
-    end
-  elseif endsWith(event.element.name, "_blueprintInfoLoad") then -- Load TOOOOOOOOOOOOOOOOO hotbar
-    local data = split(event.element.name,"_")
-    local blueprintIndex = data[1]
-    if blueprintIndex ~= nil then
-      blueprintIndex = tonumber(blueprintIndex)
-      local player = game.players[event.element.player_index]
-      local blueprint = findEmptyBlueprintInHotbar(player)
-
-      if not blueprint and config.overwrite then
-        blueprint = findBlueprintInHotbar(player)
-        if blueprint and config.useCircuit then
-          if player.get_item_count("electronic-circuit") > 0 then
-            player.remove_item{name="electronic-circuit", count=1}
-          else
-            player.print({"msg-no-circuit"})
-            blueprint = nil
-            return
+  local status, err = pcall(function(event)
+    local refreshWindow = false
+    local refreshWindows = false
+    local player = game.players[event.element.player_index]
+    local guiSettings = global.guiSettings[event.element.player_index]
+    if event.element.name == "blueprintTools" or event.element.name == "blueprintClose" then
+      if player ~= nil then
+        if player.gui.left.blueprintWindow == nil then
+          refreshWindow = true
+        else
+          player.gui.left.blueprintWindow.destroy()
+          if remote.interfaces.YARM and guiSettings.YARM_old_expando then
+            remote.call("YARM", "show_expando", player.index)
           end
         end
       end
-
-      local blueprintData = global.blueprints[player.force.name][blueprintIndex]
-
-      if blueprint ~= nil and blueprintData ~= nil then
-        local status, err = pcall(function() setBlueprintData(player.force, blueprint, blueprintData) end )
-        if status then
-          player.print({"msg-blueprint-loaded"})
-        else
-          player.print({"msg-blueprint-notloaded"})
-          player.print(err)
-        end
+    elseif event.element.name == "blueprintPageBack" then
+      if guiSettings.page > 1 then
+        guiSettings.page = guiSettings.page - 1
+        refreshWindow = true
+      end
+    elseif event.element.name == "blueprintPageForward" then
+      local lastPage = getLastPage(guiSettings.displayCount, #global.blueprints[player.force.name])
+      if guiSettings.page < lastPage then
+        guiSettings.page = guiSettings.page + 1
+        refreshWindow = true
+      end
+    elseif event.element.name == "blueprintDisplayCount" then
+      if not guiSettings.displayCountWindowVisable then
+        guiSettings.displayCountWindow = createDisplayCountWindow(game.players[event.element.player_index].gui.center, guiSettings.displayCount)
+        guiSettings.displayCountWindowVisable = true
       else
-        if not config.overwrite then
-          player.print({"msg-no-empty-blueprint"})
-        else
-          player.print({"msg-no-blueprint"})
-        end
+        guiSettings.displayCountWindow.destroy()
+        guiSettings.displayCountWindowVisable = false
       end
-    end
-  elseif endsWith(event.element.name, "_blueprintInfoExport") then -- Export to file
-    local data = split(event.element.name,"_")
-    local blueprintIndex = data[1]
-    local player = game.players[event.element.player_index]
-    if blueprintIndex ~= nil then
-      blueprintIndex = tonumber(blueprintIndex)
-      local blueprintData = global.blueprints[player.force.name][blueprintIndex]
-      --local stringOutput = convertBlueprintDataToString(blueprintData)
-      local stringOutput = serializeBlueprintData(blueprintData)
-      if stringOutput then
-        --lz77(stringOutput, 3)
-        --local out = ipack.compress(stringOutput, 8, 0)
-        --debugLog(out)
-        --local base64string = base64.encode(out)
-        local filename = blueprintData.name
-        if filename == nil or filename == "" then
-          filename = "export"
+    elseif event.element.name == "blueprintNew" or event.element.name == "blueprintNewCancel" then
+      if not guiSettings.newWindowVisable then
+        local num = (#global.blueprints[player.force.name] + 1) .. ""
+        if string.len(num) < 2 then
+          num = "0" .. num
         end
-        if player.name ~= "" then
-          filename = "blueprints/" .. player.name .. "_" .. filename .. ".blueprint"
-        else
-          filename = "blueprints/" .. filename .. ".blueprint"
-        end
-        --debugLog("Player: " .. player.name .. " : " .. event.element.player_index)
-        --filename = "blueprints/" .. filename .. ".blueprint"
-        --filename64 = "blueprints/" .. blueprintData.name .. "64.blueprint"
-        game.write_file(filename , stringOutput)
-        --game.write_file(filename64, out)
-        print_to_force(player.force, {"", player.name, {"msg-export-blueprint"}})
-        print_to_force(player.force, "File: script-output/" .. filename)
+        guiSettings.newWindow = createNewBlueprintWindow(game.players[event.element.player_index].gui.center, "_New " .. num)
+        guiSettings.newWindowVisable = true
       else
-        player.print({"msg-problem-blueprint"})
-      end
-    end
-  elseif endsWith(event.element.name, "_blueprintInfoRename") then
-    local data = split(event.element.name,"_")
-    local blueprintIndex = data[1]
-    if blueprintIndex ~= nil and guiSettings ~= nil then
-      blueprintIndex = tonumber(blueprintIndex)
-      if guiSettings.renameWindowVisable then
-        guiSettings.renameWindow.destroy()
-      end
-      guiSettings.renameWindowVisable = true
-      guiSettings.renameWindow = createRenameWindow(game.players[event.element.player_index].gui.center, blueprintIndex, global.blueprints[player.force.name][blueprintIndex].name)
-    end
-  elseif event.element.name == "blueprintNewImport" then
-    if guiSettings.newWindowVisable then
-      local name = guiSettings.newWindow.blueprintNewNameFlow.blueprintNewNameText.text
-      if name == nil or name == "" then
-        name = "new_" .. (#global.blueprints[player.force.name] + 1)
-      else
-        name = cleanupName(name)
-      end
-
-      local importString = guiSettings.newWindow.blueprintNewImportFlow.blueprintNewImportText.text
-      local blueprintData
-      if importString == nil or importString == "" then
-        local blueprint = findSetupBlueprintInHotbar(player)
-        if blueprint == nil then
-          player.print({"msg-no-blueprint"})
-        else
-          --          local status, err = testBlueprint(blueprint)
-          --          if not status then
-          --            player.print({"msg-import-blueprint-fail"})
-          --            player.print(err)
-          --          else
-          blueprintData = getBlueprintData(blueprint)
-          saveVar(blueprintData,"import")
-          --end
-        end
-      else
-        blueprintData = deserializeBlueprintData(trim(importString))
-        if blueprintData == nil then
-          player.print({"msg-problem-string"})
-        end
-      end
-      if blueprintData ~= nil then
-        if blueprintData.name == nil then
-          blueprintData.name = name
-        end
-
-        table.insert(global.blueprints[player.force.name], blueprintData)
-        table.sort(global.blueprints[player.force.name], sortBlueprint)
-        print_to_force(player.force,{"", player.name, ": ",{"msg-blueprint-imported"}})
-        print_to_force(player.force,"Name: " .. blueprintData.name)
-        destroyWindowNextTick(guiSettings.newWindow)
+        guiSettings.newWindow.destroy()
         guiSettings.newWindowVisable = false
+      end
+    elseif event.element.name == "blueprintExportAll" then
+      saveToBook(game.players[event.element.player_index])
+    elseif event.element.name == "blueprintLoadAll" then
+      loadFromBook(game.players[event.element.player_index])
+      refreshWindows = true
+    elseif endsWith(event.element.name, "_blueprintInfoDelete") then
+      local data = split(event.element.name,"_")
+      local blueprintIndex = data[1]
+      if blueprintIndex ~= nil then
+        blueprintIndex = tonumber(blueprintIndex)
+        debugLog(blueprintIndex)
+        --print_to_force(player.force,{"msg-blueprint-deleted", player.name, global.blueprints[player.force.name][blueprintIndex].name})
+        print_to_force(player.force, player.name.." deleted "..global.blueprints[player.force.name][blueprintIndex].name)
+        table.remove(global.blueprints[player.force.name], blueprintIndex)
         refreshWindows = true
       end
-    end
-  elseif event.element.name == "blueprintRenameCancel" then
-    if guiSettings.renameWindowVisable then
-      guiSettings.renameWindow.destroy()
-      guiSettings.renameWindowVisable = false
-    end
-  elseif endsWith(event.element.name,"_blueprintRenameOK") then
-    local data = split(event.element.name,"_")
-    local blueprintIndex = data[1]
-    debugLog(blueprintIndex)
-    if guiSettings.renameWindowVisable and blueprintIndex ~= nil then
-      blueprintIndex = tonumber(blueprintIndex)
-      local newName = guiSettings.renameWindow.blueprintRenameText.text
-      if newName ~= nil then
-        newName = cleanupName(newName)
-        if newName ~= ""  then
-          local blueprintData = global.blueprints[player.force.name][blueprintIndex]
-          local oldName = blueprintData.name
-          blueprintData.name = newName
-          print_to_force(player.force, {"msg-blueprint-renamed", player.name, oldName, newName})
-          --print_to_force(player.force, player.name.." renamed "..oldName.." to "..newName)
-          --destroyWindowNextTick(guiSettings.renameWindow)
+    elseif endsWith(event.element.name, "_blueprintInfoLoad") then -- Load TOOOOOOOOOOOOOOOOO hotbar
+      local data = split(event.element.name,"_")
+      local blueprintIndex = data[1]
+      if blueprintIndex ~= nil then
+        blueprintIndex = tonumber(blueprintIndex)
+        local player = game.players[event.element.player_index]
+        local blueprint = findEmptyBlueprintInHotbar(player)
+  
+        if not blueprint and config.overwrite then
+          blueprint = findBlueprintInHotbar(player)
+          if blueprint and config.useCircuit then
+            if player.get_item_count("electronic-circuit") > 0 then
+              player.remove_item{name="electronic-circuit", count=1}
+            else
+              player.print({"msg-no-circuit"})
+              blueprint = nil
+              return
+            end
+          end
+        end
+  
+        local blueprintData = global.blueprints[player.force.name][blueprintIndex]
+  
+        if blueprint ~= nil and blueprintData ~= nil then
+          local status, err = pcall(function() setBlueprintData(player.force, blueprint, blueprintData) end )
+          if status then
+            player.print({"msg-blueprint-loaded"})
+          else
+            player.print({"msg-blueprint-notloaded"})
+            player.print(err)
+          end
+        else
+          if not config.overwrite then
+            player.print({"msg-no-empty-blueprint"})
+          else
+            player.print({"msg-no-blueprint"})
+          end
+        end
+      end
+    elseif endsWith(event.element.name, "_blueprintInfoExport") then -- Export to file
+      local data = split(event.element.name,"_")
+      local blueprintIndex = data[1]
+      local player = game.players[event.element.player_index]
+      if blueprintIndex ~= nil then
+        blueprintIndex = tonumber(blueprintIndex)
+        local blueprintData = global.blueprints[player.force.name][blueprintIndex]
+        --local stringOutput = convertBlueprintDataToString(blueprintData)
+        local stringOutput = serializeBlueprintData(blueprintData)
+        if stringOutput then
+          --lz77(stringOutput, 3)
+          --local out = ipack.compress(stringOutput, 8, 0)
+          --debugLog(out)
+          --local base64string = base64.encode(out)
+          local filename = blueprintData.name
+          if filename == nil or filename == "" then
+            filename = "export"
+          end
+          if player.name ~= "" then
+            filename = "blueprints/" .. player.name .. "_" .. filename .. ".blueprint"
+          else
+            filename = "blueprints/" .. filename .. ".blueprint"
+          end
+          --debugLog("Player: " .. player.name .. " : " .. event.element.player_index)
+          --filename = "blueprints/" .. filename .. ".blueprint"
+          --filename64 = "blueprints/" .. blueprintData.name .. "64.blueprint"
+          game.write_file(filename , stringOutput)
+          --game.write_file(filename64, out)
+          print_to_force(player.force, {"", player.name, {"msg-export-blueprint"}})
+          print_to_force(player.force, "File: script-output/" .. filename)
+        else
+          player.print({"msg-problem-blueprint"})
+        end
+      end
+    elseif endsWith(event.element.name, "_blueprintInfoRename") then
+      local data = split(event.element.name,"_")
+      local blueprintIndex = data[1]
+      if blueprintIndex ~= nil and guiSettings ~= nil then
+        blueprintIndex = tonumber(blueprintIndex)
+        if guiSettings.renameWindowVisable then
           guiSettings.renameWindow.destroy()
-          guiSettings.renameWindowVisable = false
+        end
+        guiSettings.renameWindowVisable = true
+        guiSettings.renameWindow = createRenameWindow(game.players[event.element.player_index].gui.center, blueprintIndex, global.blueprints[player.force.name][blueprintIndex].name)
+      end
+    elseif event.element.name == "blueprintNewImport" then
+      if guiSettings.newWindowVisable then
+        local name = guiSettings.newWindow.blueprintNewNameFlow.blueprintNewNameText.text
+        if name == nil or name == "" then
+          name = "new_" .. (#global.blueprints[player.force.name] + 1)
+        else
+          name = cleanupName(name)
+        end
+  
+        local importString = guiSettings.newWindow.blueprintNewImportFlow.blueprintNewImportText.text
+        local blueprintData
+        if importString == nil or importString == "" then
+          local blueprint = findSetupBlueprintInHotbar(player)
+          if blueprint == nil then
+            player.print({"msg-no-blueprint"})
+          else
+            --          local status, err = testBlueprint(blueprint)
+            --          if not status then
+            --            player.print({"msg-import-blueprint-fail"})
+            --            player.print(err)
+            --          else
+            blueprintData = getBlueprintData(blueprint)
+            saveVar(blueprintData,"import")
+            --end
+          end
+        else
+          blueprintData = deserializeBlueprintData(trim(importString))
+          if blueprintData == nil then
+            player.print({"msg-problem-string"})
+          end
+        end
+        if blueprintData ~= nil then
+          if blueprintData.name == nil then
+            blueprintData.name = name
+          end
+  
+          table.insert(global.blueprints[player.force.name], blueprintData)
+          table.sort(global.blueprints[player.force.name], sortBlueprint)
+          print_to_force(player.force,{"", player.name, ": ",{"msg-blueprint-imported"}})
+          print_to_force(player.force,"Name: " .. blueprintData.name)
+          destroyWindowNextTick(guiSettings.newWindow)
+          guiSettings.newWindowVisable = false
           refreshWindows = true
         end
       end
-    end
-  elseif event.element.name == "blueprintDisplayCountOK" then
-    if guiSettings.displayCountWindowVisable then
-      local newInt = tonumber(guiSettings.displayCountWindow.blueprintDisplayCountText.text)
-      if newInt then
-        if newInt < 1 then
-          newInt = 1
-        elseif newInt > 50 then
-          newInt = 50
+    elseif event.element.name == "blueprintRenameCancel" then
+      if guiSettings.renameWindowVisable then
+        guiSettings.renameWindow.destroy()
+        guiSettings.renameWindowVisable = false
+      end
+    elseif endsWith(event.element.name,"_blueprintRenameOK") then
+      local data = split(event.element.name,"_")
+      local blueprintIndex = data[1]
+      debugLog(blueprintIndex)
+      if guiSettings.renameWindowVisable and blueprintIndex ~= nil then
+        blueprintIndex = tonumber(blueprintIndex)
+        local newName = guiSettings.renameWindow.blueprintRenameText.text
+        if newName ~= nil then
+          newName = cleanupName(newName)
+          if newName ~= ""  then
+            local blueprintData = global.blueprints[player.force.name][blueprintIndex]
+            local oldName = blueprintData.name
+            blueprintData.name = newName
+            print_to_force(player.force, {"msg-blueprint-renamed", player.name, oldName, newName})
+            --print_to_force(player.force, player.name.." renamed "..oldName.." to "..newName)
+            --destroyWindowNextTick(guiSettings.renameWindow)
+            guiSettings.renameWindow.destroy()
+            guiSettings.renameWindowVisable = false
+            refreshWindows = true
+          end
         end
-        guiSettings.displayCount = newInt
-        guiSettings.page = 1
-        refreshWindow = true
-      else
-        player.print({"msg-notanumber"})
       end
-      destroyWindowNextTick(guiSettings.displayCountWindow)
-      guiSettings.displayCountWindowVisable = false
-    end
-  end
-
-  if refreshWindow then
-    createBlueprintWindow(player, global.blueprints[player.force.name], global.guiSettings[player.index])
-  end
-  if refreshWindows then
-    for i,player in pairs(player.force.players) do
-      if global.guiSettings[player.index].windowVisable then
-        createBlueprintWindow(player, global.blueprints[player.force.name], global.guiSettings[player.index])
+    elseif event.element.name == "blueprintDisplayCountOK" then
+      if guiSettings.displayCountWindowVisable then
+        local newInt = tonumber(guiSettings.displayCountWindow.blueprintDisplayCountText.text)
+        if newInt then
+          if newInt < 1 then
+            newInt = 1
+          elseif newInt > 50 then
+            newInt = 50
+          end
+          guiSettings.displayCount = newInt
+          guiSettings.page = 1
+          refreshWindow = true
+        else
+          player.print({"msg-notanumber"})
+        end
+        destroyWindowNextTick(guiSettings.displayCountWindow)
+        guiSettings.displayCountWindowVisable = false
       end
     end
-  end
+  
+    if refreshWindow then
+      createBlueprintWindow(player, global.blueprints[player.force.name], global.guiSettings[player.index])
+    end
+    if refreshWindows then
+      for i,player in pairs(player.force.players) do
+        if global.guiSettings[player.index].windowVisable then
+          createBlueprintWindow(player, global.blueprints[player.force.name], global.guiSettings[player.index])
+        end
+      end
+    end
+  end, event)
+  if err then debugDump(err,true) end
 end
+
+script.on_event(defines.events.on_gui_click, on_gui_click)
 
 function sortBlueprint(blueprintA, blueprintB)
   if blueprintA.name < blueprintB.name then
