@@ -51,6 +51,94 @@ local function on_load()
 -- set metatables, register conditional event handlers, local references to global
 end
 
+saveBlueprint = function(player, blueprintIndex, show, folder)
+  local blueprintData = global.blueprints[player.force.name][blueprintIndex]
+  --local stringOutput = convertBlueprintDataToString(blueprintData)
+  local stringOutput = serializeBlueprintData(blueprintData)
+  if stringOutput then
+    --lz77(stringOutput, 3)
+    --local out = ipack.compress(stringOutput, 8, 0)
+    --debugLog(out)
+    --local base64string = base64.encode(out)
+    local filename = blueprintData.name
+    if filename == nil or filename == "" then
+      filename = "export"
+    end
+    folder = folder or ""
+    if player.name ~= "" then
+      filename = "blueprints/".. folder .. "/" .. player.name .. "_" .. filename .. ".blueprint"
+    else
+      filename = "blueprints/" .. folder .. "/" .. filename .. ".blueprint"
+    end
+    --debugLog("Player: " .. player.name .. " : " .. event.element.player_index)
+    --filename = "blueprints/" .. filename .. ".blueprint"
+    --filename64 = "blueprints/" .. blueprintData.name .. "64.blueprint"
+    game.write_file(filename , stringOutput)
+    --game.write_file(filename64, out)
+    if show then
+      print_to_force(player.force, {"", player.name, {"msg-export-blueprint"}})
+      print_to_force(player.force, "File: script-output/" .. filename)
+    end
+  else
+    player.print({"msg-problem-blueprint"})
+  end
+end
+
+function addPos(pos1, pos2)
+  return {x=pos1.x+pos2.x, y=pos1.y+pos2.y}
+end
+
+function convertBlueprint(bp, offset)
+  if bp.entities then
+    for i, ent in pairs(bp.entities) do
+      ent.position = addPos(ent.position, offset)
+    end
+  end
+  if bp.tiles then
+    for j, tile in pairs(bp.tiles) do
+      tile.position = addPos(ent.position, offset)
+    end
+  end
+  return bp
+end
+
+function convert_to_012(bp)
+  local offset = {x=-0.5,y=-0.5}
+  local rail_entities = {["straight-rail"] = true, ["curved-rail"]=true, ["rail-signal"]=true, ["rail-chain-signal"]=true, ["train-stop"]=true, ["smart-train-stop"]=true}
+  if contains_entities(bp,rail_entities) then
+    offset = { x = -1, y = -1 }
+  end
+  log("Converting " .. bp.name .. " to 0.1.2 format")
+  bp.version = "0.1.2"
+  return convertBlueprint(bp,offset)
+end
+
+function contains_entities(bp, entities)
+  if bp.entities then
+    for ent_index, ent in pairs(bp.entities) do
+      if entities[ent.name] then
+        return true
+      end
+    end
+  end
+  return false
+end
+
+function convertBlueprints()
+  log("Converting blueprints")
+  for force, forceBP in pairs(global.blueprints) do
+    local player = {name="", force={name=force}, print=function() return end}
+    for i, bp in pairs(forceBP) do
+      saveBlueprint(player,i,false,"preConversion")
+      if not bp.version then
+        bp = convert_to_012(bp)
+        saveBlueprint(player,i,false,"postConversion")
+      end
+    end
+  end
+  log("Done")
+end
+
 -- run once
 local function on_configuration_changed(data)
   if not data or not data.mod_changes then
@@ -78,11 +166,11 @@ local function on_configuration_changed(data)
           global.guiSettings[i].blueprintCount = nil
         end
         if oldVersion < "0.1.0" then
-        for i,f in pairs(game.forces) do
-          if not config.ignoreForces[f.name] then
-            global.blueprints[f.name] = util.table.deepcopy(tmp)
+          for i,f in pairs(game.forces) do
+            if not config.ignoreForces[f.name] then
+              global.blueprints[f.name] = util.table.deepcopy(tmp)
+            end
           end
-        end
         elseif oldVersion == "0.1.0" then
           for i,p in pairs(game.players) do
             local f = p.force.name
@@ -93,7 +181,11 @@ local function on_configuration_changed(data)
         end
         saveVar(global.blueprints, "post_0.1.1")
       end
+      if oldVersion < "0.1.2" then
+        convertBlueprints()
+      end
     end
+    global.version = newVersion
   end
   --check for other mods
 end
@@ -255,7 +347,7 @@ local function on_gui_click(event)
         blueprintIndex = tonumber(blueprintIndex)
         local player = game.players[event.element.player_index]
         local blueprint = findEmptyBlueprintInHotbar(player)
-  
+
         if not blueprint and config.overwrite then
           blueprint = findBlueprintInHotbar(player)
           if blueprint and config.useCircuit then
@@ -268,9 +360,9 @@ local function on_gui_click(event)
             end
           end
         end
-  
+
         local blueprintData = global.blueprints[player.force.name][blueprintIndex]
-  
+
         if blueprint ~= nil and blueprintData ~= nil then
           local status, err = pcall(function() setBlueprintData(player.force, blueprint, blueprintData) end )
           if status then
@@ -291,35 +383,10 @@ local function on_gui_click(event)
       local data = split(event.element.name,"_")
       local blueprintIndex = data[1]
       local player = game.players[event.element.player_index]
+
       if blueprintIndex ~= nil then
         blueprintIndex = tonumber(blueprintIndex)
-        local blueprintData = global.blueprints[player.force.name][blueprintIndex]
-        --local stringOutput = convertBlueprintDataToString(blueprintData)
-        local stringOutput = serializeBlueprintData(blueprintData)
-        if stringOutput then
-          --lz77(stringOutput, 3)
-          --local out = ipack.compress(stringOutput, 8, 0)
-          --debugLog(out)
-          --local base64string = base64.encode(out)
-          local filename = blueprintData.name
-          if filename == nil or filename == "" then
-            filename = "export"
-          end
-          if player.name ~= "" then
-            filename = "blueprints/" .. player.name .. "_" .. filename .. ".blueprint"
-          else
-            filename = "blueprints/" .. filename .. ".blueprint"
-          end
-          --debugLog("Player: " .. player.name .. " : " .. event.element.player_index)
-          --filename = "blueprints/" .. filename .. ".blueprint"
-          --filename64 = "blueprints/" .. blueprintData.name .. "64.blueprint"
-          game.write_file(filename , stringOutput)
-          --game.write_file(filename64, out)
-          print_to_force(player.force, {"", player.name, {"msg-export-blueprint"}})
-          print_to_force(player.force, "File: script-output/" .. filename)
-        else
-          player.print({"msg-problem-blueprint"})
-        end
+        saveBlueprint(player, blueprintIndex, true)
       end
     elseif endsWith(event.element.name, "_blueprintInfoRename") then
       local data = split(event.element.name,"_")
@@ -340,7 +407,7 @@ local function on_gui_click(event)
         else
           name = cleanupName(name)
         end
-  
+
         local importString = guiSettings.newWindow.blueprintNewImportFlow.blueprintNewImportText.text
         local blueprintData
         if importString == nil or importString == "" then
@@ -367,7 +434,12 @@ local function on_gui_click(event)
           if blueprintData.name == nil then
             blueprintData.name = name
           end
-  
+          if blueprintData.version == nil then
+            player.print("Converting "..blueprintData.name.." to 0.1.2 format")
+            convert_to_012(blueprintData)
+            blueprintData.version = global.version
+          end
+
           table.insert(global.blueprints[player.force.name], blueprintData)
           table.sort(global.blueprints[player.force.name], sortBlueprint)
           print_to_force(player.force,{"", player.name, ": ",{"msg-blueprint-imported"}})
@@ -423,7 +495,7 @@ local function on_gui_click(event)
         guiSettings.displayCountWindowVisable = false
       end
     end
-  
+
     if refreshWindow then
       createBlueprintWindow(player, global.blueprints[player.force.name], global.guiSettings[player.index])
     end
@@ -448,6 +520,9 @@ end
 
 function serializeBlueprintData(blueprintData)
   if blueprintData ~= nil and blueprintData.icons ~= nil and (blueprintData.entities ~= nil or blueprintData.tiles ~= nil) then
+    if not blueprintData.version then
+      blueprintData.version = global.version
+    end
     return serpent.block(blueprintData, {name="blueprintData"})
   end
   return nil
@@ -510,12 +585,12 @@ end
 
 function destroyWindowNextTick(window) -- THIS IS A HACK TO WORKAROUND A GUI TIMING BUG IN FACTORIO
   --if global.destroy == nil then
-    --global.destroy = {}
-    --script.on_event(defines.events.on_tick, onTickEvent_destroy)
+  --global.destroy = {}
+  --script.on_event(defines.events.on_tick, onTickEvent_destroy)
   --end
   if window and window.valid then
     window.destroy()
-  end
+end
 --table.insert(global.destroy, window)
 end
 
@@ -835,14 +910,21 @@ function saveToBook(player)
   local name = player.name or ""
   game.write_file("blueprints/"..name.."_defaultBookPreSave.lua", serpent.dump(defaultBook, {name="blueprints"}))
   game.write_file("blueprints/"..name.."_defaultBook.lua", serpent.dump(global.blueprints[player.force.name], {name="blueprints"}))
+  player.print("Exporting all blueprints to single file is going to be removed soon!")
   player.print(#global.blueprints[player.force.name].." blueprints exported")
-  --game.write_file("farl/loco"..n..".lua", serpent.block(findAllEntitiesByType("locomotive")))
 end
 
 function loadFromBook(player)
+  player.print("Importing all blueprints from a single file is going to be removed soon!")
   if #defaultBook > 0 then
     local name = player.name or ""
     game.write_file("blueprints/"..name.."_defaultBookpreLoad.lua", serpent.dump(global.blueprints[player.force.name], {name="blueprints"}))
+    for i, bp in pairs(defaultBook) do
+      if not bp.version then
+        player.print("Converting "..bp.name.. " to 0.1.2 format")
+        convert_to_012(bp)
+      end
+    end
     global.blueprints[player.force.name] = defaultBook
     table.sort(global.blueprints[player.force.name], sortBlueprint)
     player.print(#global.blueprints[player.force.name].." blueprints imported")
