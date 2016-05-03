@@ -96,7 +96,7 @@ function convertBlueprint(bp, offset)
   end
   if bp.tiles then
     for j, tile in pairs(bp.tiles) do
-      tile.position = addPos(ent.position, offset)
+      tile.position = addPos(tile.position, offset)
     end
   end
   return bp
@@ -821,6 +821,7 @@ function getBlueprintData(blueprintStack)
     data.icons = blueprintStack.blueprint_icons
     data.entities = blueprintStack.get_blueprint_entities()
     data.tiles = blueprintStack.get_blueprint_tiles()
+    data.version = global.version
     --saveVar(data.entities, "import1")
     return data
   end

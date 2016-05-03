@@ -1,7 +1,7 @@
 {
 	"name":"Foreman",
 	"author":"Choumiko (originally: JamesOFarrell)",
-	"version":"0.1.2",
+	"version":"0.1.21",
 	"title":"Foreman",
 	"description":"For managing all your blueprint needs.",
 	"dependencies": ["base >= 0.12.32"]
