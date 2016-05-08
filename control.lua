@@ -1,7 +1,10 @@
 require "defines"
 require "util"
-deflate = require "lmod/deflatelua"
-base64 = require "lmod/base64"
+require 'stdlib.string'
+require 'stdlib.area.position'
+require 'stdlib.game'
+
+BlueprintString = require 'blueprintstring.blueprintstring'
 require "config"
 MOD_NAME = "Foreman"
 defaultBook = require "defaultBook"
@@ -37,7 +40,7 @@ local function init_force(force)
 end
 
 local function init_forces()
-  for i, force in pairs(game.forces) do
+  for _, force in pairs(game.forces) do
     init_force(force)
   end
 end
@@ -56,47 +59,35 @@ saveBlueprint = function(player, blueprintIndex, show, folder)
   --local stringOutput = convertBlueprintDataToString(blueprintData)
   local stringOutput = serializeBlueprintData(blueprintData)
   if stringOutput then
-    --lz77(stringOutput, 3)
-    --local out = ipack.compress(stringOutput, 8, 0)
-    --debugLog(out)
-    --local base64string = base64.encode(out)
     local filename = blueprintData.name
     if filename == nil or filename == "" then
       filename = "export"
     end
-    folder = folder or ""
+    folder = folder or "/"
     if player.name ~= "" then
-      filename = "blueprints/".. folder .. "/" .. player.name .. "_" .. filename .. ".blueprint"
+      filename = "blueprints/".. folder .. player.name .. "_" .. filename .. ".blueprint"
     else
-      filename = "blueprints/" .. folder .. "/" .. filename .. ".blueprint"
+      filename = "blueprints/" .. folder .. filename .. ".blueprint"
     end
-    --debugLog("Player: " .. player.name .. " : " .. event.element.player_index)
-    --filename = "blueprints/" .. filename .. ".blueprint"
-    --filename64 = "blueprints/" .. blueprintData.name .. "64.blueprint"
     game.write_file(filename , stringOutput)
-    --game.write_file(filename64, out)
     if show then
-      print_to_force(player.force, {"", player.name, {"msg-export-blueprint"}})
-      print_to_force(player.force, "File: script-output/" .. filename)
+      Game.print_force(player.force, {"", player.name, {"msg-export-blueprint"}}) --TODO localisation
+      Game.print_force(player.force, "File: script-output/" .. filename) --TODO localisation
     end
   else
     player.print({"msg-problem-blueprint"})
   end
 end
 
-function addPos(pos1, pos2)
-  return {x=pos1.x+pos2.x, y=pos1.y+pos2.y}
-end
-
 function convertBlueprint(bp, offset)
   if bp.entities then
-    for i, ent in pairs(bp.entities) do
-      ent.position = addPos(ent.position, offset)
+    for _, ent in pairs(bp.entities) do
+      ent.position = Position.add(ent.position,offset)
     end
   end
   if bp.tiles then
-    for j, tile in pairs(bp.tiles) do
-      tile.position = addPos(tile.position, offset)
+    for _, tile in pairs(bp.tiles) do
+      tile.position = Position.add(tile.position,offset)
     end
   end
   return bp
@@ -115,7 +106,7 @@ end
 
 function contains_entities(bp, entities)
   if bp.entities then
-    for ent_index, ent in pairs(bp.entities) do
+    for _, ent in pairs(bp.entities) do
       if entities[ent.name] then
         return true
       end
@@ -131,7 +122,7 @@ function convertBlueprints()
     for i, bp in pairs(forceBP) do
       saveBlueprint(player,i,false,"preConversion")
       if not bp.version then
-        bp = convert_to_012(bp)
+        convert_to_012(bp)
         saveBlueprint(player,i,false,"postConversion")
       end
     end
@@ -162,11 +153,11 @@ local function on_configuration_changed(data)
         init_global()
         init_forces()
         init_players()
-        for i, p in pairs(game.players) do
+        for i, _ in pairs(game.players) do
           global.guiSettings[i].blueprintCount = nil
         end
         if oldVersion < "0.1.0" then
-          for i,f in pairs(game.forces) do
+          for _,f in pairs(game.forces) do
             if not config.ignoreForces[f.name] then
               global.blueprints[f.name] = util.table.deepcopy(tmp)
             end
@@ -211,12 +202,9 @@ end
 local function on_force_created(event)
   init_force(event.force)
 end
-local function on_forces_merging(event)
-
-end
 
 local function createBlueprintButtons(force)
-  for i, player in pairs(force.players) do
+  for _, player in pairs(force.players) do
     createBlueprintButton(player, global.guiSettings[player.index])
   end
 end
@@ -241,12 +229,6 @@ function getPlayerIndexFromUsername(username)
     if player ~= nil and player.name == username then
       return i
     end
-  end
-end
-
-function print_to_force(force, msg)
-  for _, p in pairs(force.players) do
-    p.print(msg)
   end
 end
 
@@ -277,11 +259,13 @@ function destroyGuis(player, guiSettings)
 end
 
 local function on_gui_click(event)
-  local status, err = pcall(function(event)
+  local _, err = pcall(function(event)
     local refreshWindow = false
     local refreshWindows = false
     local player = game.players[event.element.player_index]
     local guiSettings = global.guiSettings[event.element.player_index]
+    local data = split(event.element.name,"_")
+    local blueprintIndex = tonumber(data[1])
     if event.element.name == "blueprintTools" or event.element.name == "blueprintClose" then
       if player ~= nil then
         if player.gui.left.blueprintWindow == nil then
@@ -329,23 +313,15 @@ local function on_gui_click(event)
     elseif event.element.name == "blueprintLoadAll" then
       loadFromBook(game.players[event.element.player_index])
       refreshWindows = true
-    elseif endsWith(event.element.name, "_blueprintInfoDelete") then
-      local data = split(event.element.name,"_")
-      local blueprintIndex = data[1]
+    elseif string.ends_with(event.element.name, "_blueprintInfoDelete") then
       if blueprintIndex ~= nil then
-        blueprintIndex = tonumber(blueprintIndex)
         debugLog(blueprintIndex)
-        --print_to_force(player.force,{"msg-blueprint-deleted", player.name, global.blueprints[player.force.name][blueprintIndex].name})
-        print_to_force(player.force, player.name.." deleted "..global.blueprints[player.force.name][blueprintIndex].name)
+        Game.print_force(player.force, player.name.." deleted "..global.blueprints[player.force.name][blueprintIndex].name) --TODO localisation
         table.remove(global.blueprints[player.force.name], blueprintIndex)
         refreshWindows = true
       end
-    elseif endsWith(event.element.name, "_blueprintInfoLoad") then -- Load TOOOOOOOOOOOOOOOOO hotbar
-      local data = split(event.element.name,"_")
-      local blueprintIndex = data[1]
+    elseif string.ends_with(event.element.name, "_blueprintInfoLoad") then -- Load TOOOOOOOOOOOOOOOOO hotbar
       if blueprintIndex ~= nil then
-        blueprintIndex = tonumber(blueprintIndex)
-        local player = game.players[event.element.player_index]
         local blueprint = findEmptyBlueprintInHotbar(player)
 
         if not blueprint and config.overwrite then
@@ -379,20 +355,12 @@ local function on_gui_click(event)
           end
         end
       end
-    elseif endsWith(event.element.name, "_blueprintInfoExport") then -- Export to file
-      local data = split(event.element.name,"_")
-      local blueprintIndex = data[1]
-      local player = game.players[event.element.player_index]
-
+    elseif string.ends_with(event.element.name, "_blueprintInfoExport") then -- Export to file
       if blueprintIndex ~= nil then
-        blueprintIndex = tonumber(blueprintIndex)
         saveBlueprint(player, blueprintIndex, true)
       end
-    elseif endsWith(event.element.name, "_blueprintInfoRename") then
-      local data = split(event.element.name,"_")
-      local blueprintIndex = data[1]
+    elseif string.ends_with(event.element.name, "_blueprintInfoRename") then
       if blueprintIndex ~= nil and guiSettings ~= nil then
-        blueprintIndex = tonumber(blueprintIndex)
         if guiSettings.renameWindowVisable then
           guiSettings.renameWindow.destroy()
         end
@@ -400,66 +368,70 @@ local function on_gui_click(event)
         guiSettings.renameWindow = createRenameWindow(game.players[event.element.player_index].gui.center, blueprintIndex, global.blueprints[player.force.name][blueprintIndex].name)
       end
     elseif event.element.name == "blueprintNewImport" then
-      if guiSettings.newWindowVisable then
-        local name = guiSettings.newWindow.blueprintNewNameFlow.blueprintNewNameText.text
-        if name == nil or name == "" then
-          name = "new_" .. (#global.blueprints[player.force.name] + 1)
+      if not guiSettings.newWindowVisable then
+        return
+      end
+      local name = guiSettings.newWindow.blueprintNewNameFlow.blueprintNewNameText.text
+      if name == nil or name == "" then
+        name = "new_" .. (#global.blueprints[player.force.name] + 1)
+      else
+        name = cleanupName(name)
+      end
+
+      local importString = guiSettings.newWindow.blueprintNewImportFlow.blueprintNewImportText.text
+      local blueprintData
+      if importString == nil or importString == "" then
+        local blueprint = findSetupBlueprintInHotbar(player)
+        if blueprint == nil then
+          player.print({"msg-no-blueprint"})
         else
-          name = cleanupName(name)
+          blueprintData = getBlueprintData(blueprint)
+          saveVar(blueprintData,"import")
+          --end
+        end
+      else
+        if string.starts_with(importString, "do local") then
+          blueprintData = deserializeBlueprintData(string.trim(importString))
+          log("local " .. serpent.line(blueprintData.name) .. " " .. serpent.line(blueprintData.version))
+        else
+          --try blueprint string
+          blueprintData = BlueprintString.fromString(importString)
+          if blueprintData then
+            if not blueprintData.version then
+              blueprintData.version = "0.1.2"
+            end
+            log("bps " .. serpent.line(blueprintData.name) .. " " .. serpent.line(blueprintData.version))
+          end
+        end
+        if not blueprintData then
+          player.print({"msg-problem-string"})
+        end
+      end
+      if blueprintData ~= nil then
+        if blueprintData.name == nil then
+          blueprintData.name = name
+        end
+        if not blueprintData.version then
+          player.print("Converting "..blueprintData.name.." to 0.1.2 format")
+          convert_to_012(blueprintData)
+          blueprintData.version = "0.1.2"
         end
 
-        local importString = guiSettings.newWindow.blueprintNewImportFlow.blueprintNewImportText.text
-        local blueprintData
-        if importString == nil or importString == "" then
-          local blueprint = findSetupBlueprintInHotbar(player)
-          if blueprint == nil then
-            player.print({"msg-no-blueprint"})
-          else
-            --          local status, err = testBlueprint(blueprint)
-            --          if not status then
-            --            player.print({"msg-import-blueprint-fail"})
-            --            player.print(err)
-            --          else
-            blueprintData = getBlueprintData(blueprint)
-            saveVar(blueprintData,"import")
-            --end
-          end
-        else
-          blueprintData = deserializeBlueprintData(trim(importString))
-          if blueprintData == nil then
-            player.print({"msg-problem-string"})
-          end
-        end
-        if blueprintData ~= nil then
-          if blueprintData.name == nil then
-            blueprintData.name = name
-          end
-          if blueprintData.version == nil then
-            player.print("Converting "..blueprintData.name.." to 0.1.2 format")
-            convert_to_012(blueprintData)
-            blueprintData.version = global.version
-          end
-
-          table.insert(global.blueprints[player.force.name], blueprintData)
-          table.sort(global.blueprints[player.force.name], sortBlueprint)
-          print_to_force(player.force,{"", player.name, ": ",{"msg-blueprint-imported"}})
-          print_to_force(player.force,"Name: " .. blueprintData.name)
-          destroyWindowNextTick(guiSettings.newWindow)
-          guiSettings.newWindowVisable = false
-          refreshWindows = true
-        end
+        table.insert(global.blueprints[player.force.name], blueprintData)
+        table.sort(global.blueprints[player.force.name], sortBlueprint)
+        Game.print_force(player.force, {"", player.name, ": ",{"msg-blueprint-imported"}}) --TODO localisation
+        Game.print_force(player.force, "Name: " .. blueprintData.name) --TODO localisation
+        guiSettings.newWindow.destroy()
+        guiSettings.newWindowVisable = false
+        refreshWindows = true
       end
     elseif event.element.name == "blueprintRenameCancel" then
       if guiSettings.renameWindowVisable then
         guiSettings.renameWindow.destroy()
         guiSettings.renameWindowVisable = false
       end
-    elseif endsWith(event.element.name,"_blueprintRenameOK") then
-      local data = split(event.element.name,"_")
-      local blueprintIndex = data[1]
-      debugLog(blueprintIndex)
+    elseif string.ends_with(event.element.name,"_blueprintRenameOK") then
       if guiSettings.renameWindowVisable and blueprintIndex ~= nil then
-        blueprintIndex = tonumber(blueprintIndex)
         local newName = guiSettings.renameWindow.blueprintRenameText.text
         if newName ~= nil then
           newName = cleanupName(newName)
@@ -467,9 +439,7 @@ local function on_gui_click(event)
             local blueprintData = global.blueprints[player.force.name][blueprintIndex]
             local oldName = blueprintData.name
             blueprintData.name = newName
-            print_to_force(player.force, {"msg-blueprint-renamed", player.name, oldName, newName})
-            --print_to_force(player.force, player.name.." renamed "..oldName.." to "..newName)
-            --destroyWindowNextTick(guiSettings.renameWindow)
+            Game.print_force(player.force, {"msg-blueprint-renamed", player.name, oldName, newName})
             guiSettings.renameWindow.destroy()
             guiSettings.renameWindowVisable = false
             refreshWindows = true
@@ -491,7 +461,8 @@ local function on_gui_click(event)
         else
           player.print({"msg-notanumber"})
         end
-        destroyWindowNextTick(guiSettings.displayCountWindow)
+        guiSettings.displayCountWindow.destroy()
+        log("w "..serpent.line(guiSettings.displayCountWindow))
         guiSettings.displayCountWindowVisable = false
       end
     end
@@ -500,9 +471,9 @@ local function on_gui_click(event)
       createBlueprintWindow(player, global.blueprints[player.force.name], global.guiSettings[player.index])
     end
     if refreshWindows then
-      for i,player in pairs(player.force.players) do
-        if global.guiSettings[player.index].windowVisable then
-          createBlueprintWindow(player, global.blueprints[player.force.name], global.guiSettings[player.index])
+      for _,p in pairs(player.force.players) do
+        if global.guiSettings[p.index].windowVisable then
+          createBlueprintWindow(p, global.blueprints[p.force.name], global.guiSettings[p.index])
         end
       end
     end
@@ -539,83 +510,22 @@ end
 
 function deserializeBlueprintData(dataString)
   if dataString ~= nil then
-    local textData = dataString
-    if not string.match(dataString, "do local") then
-      if string.match(dataString, "Blueprint string") then
-        local splitData = split(dataString, " ")
-        dataString = splitData[#splitData]
-      end
-      -- Try to decode "blueprint-string" format (gzip > base64)
-      local gzipData
-      pcall(function () gzipData = base64.decode(dataString) end)
-      if gzipData then
-        --debugLog(gzipData)
-
-        -- Stolen lock stock from blueprint-string\
-        local output = {}
-        local status, result = pcall(deflate.gunzip, { input = gzipData, output = function(byte) output[#output+1] = string.char(byte) end })
-        if (status) then
-          textData = table.concat(output)
-        else
-          debugLog(result)
-        end
-      end
-    end
-    if textData ~= nil then
-      --debugLog(textData)
-      local ok, copy = deserialize(textData)
-      if ok then
-        return copy
-      end
+    local ok, copy = deserialize(dataString)
+    if ok then
+      return copy
     end
   end
-  --debugLog("Error:")
   return nil
-end
-
-onTickEvent_destroy = function(event)
-  script.on_event(defines.events.on_tick, nil)
-  for i, window in ipairs(global.destroy) do
-    if window then
-      window.destroy()
-    end
-  end
-  global.destroy = nil
-end
-
-function destroyWindowNextTick(window) -- THIS IS A HACK TO WORKAROUND A GUI TIMING BUG IN FACTORIO
-  --if global.destroy == nil then
-  --global.destroy = {}
-  --script.on_event(defines.events.on_tick, onTickEvent_destroy)
-  --end
-  if window and window.valid then
-    window.destroy()
-end
---table.insert(global.destroy, window)
 end
 
 function cleanupName(name)
   return string.gsub(name, "[\\.?~!@#$%^&*(){}\"']", "")
 end
 
-function isMultiplayer()
-  if pcall(function () game.getplayer() end) then
-    return false
-  else
-    return true
-  end
-end
-
-function testBlueprint(blueprint)
-  local entities = blueprint.get_blueprint_entities()
-  saveVar(entities, "test")
-  return pcall(function () blueprint.set_blueprint_entities(entities) end)
-end
-
 function findSetupBlueprintInHotbar(player)
   local blueprints = findBlueprintsInHotbar(player)
   if blueprints ~= nil then
-    for i, blueprint in ipairs(blueprints) do
+    for _, blueprint in ipairs(blueprints) do
       if blueprint.is_blueprint_setup() then
         return blueprint
       end
@@ -626,7 +536,7 @@ end
 function findEmptyBlueprintInHotbar(player)
   local blueprints = findBlueprintsInHotbar(player)
   if blueprints ~= nil then
-    for i, blueprint in ipairs(blueprints) do
+    for _, blueprint in ipairs(blueprints) do
       if not blueprint.is_blueprint_setup() then
         return blueprint
       end
@@ -726,7 +636,7 @@ function createBlueprintFrame(gui, index, blueprintData)
     buttonFlow.add({type="button", name=index .. "_blueprintInfoLoad", caption={"btn-blueprint-load"}, style="blueprint_button_style"})
     buttonFlow.add({type="button", name=index .. "_blueprintInfoExport", caption={"btn-blueprint-export"}, style="blueprint_button_style"})
     buttonFlow.add({type="button", name=index .. "_blueprintInfoRename", caption={"btn-blueprint-rename"}, style="blueprint_button_style"})
-    local label = frame.add({type="label", name=index .. "_blueprintInfoName", caption=blueprintData.name, style="blueprint_label_style"})
+    frame.add({type="label", name=index .. "_blueprintInfoName", caption=blueprintData.name, style="blueprint_label_style"})
     return frame
   end
 end
@@ -810,7 +720,7 @@ function setBlueprintData(force, blueprintStack, blueprintData)
 end
 
 function saveVar(var, name)
-  local var = var or global
+  var = var or global
   local n = name or "foreman"
   game.write_file("blueprint-string/"..n..".lua", serpent.block(var, {name="global", sparse=true}))
 end
@@ -829,26 +739,16 @@ function getBlueprintData(blueprintStack)
 end
 
 function split(stringA, sep)
-  local sep, fields = sep or ":", {}
+  sep = sep or ":"
+  local fields = {}
   local pattern = string.format("([^%s]+)", sep)
   string.gsub(stringA, pattern, function(c) fields[#fields+1] = c end)
   return fields
 end
 
-function endsWith(String,End)
-  return End=='' or string.sub(String,-string.len(End))==End
-end
-
---function getBlueprintDataText (blueprintData)
-
--- game.players[1].get_inventory(1).get_itemstack(1)
--- [13:19:18] <Rseding91|H> Read: name, type, hasgrid, grid, health, durability, ammo, blueprint_icons
--- [13:19:25] <Rseding91|H> write: health, durability, blueprint_icons
--- [13:19:36] <Rseding91|H> methods: is_blueprint_setup(), get_blueprint_entities(), set_blueprint_entities()
-
 function debugLog(message, force)
   if false or force then -- set for debug
-    for i,player in pairs(game.players) do
+    for _,player in pairs(game.players) do
       player.print(message)
   end
   end
@@ -856,7 +756,7 @@ end
 
 function debugDump(var, force)
   if false or force then
-    for i,player in pairs(game.players) do
+    for _,player in pairs(game.players) do
       local msg
       if type(var) == "string" then
         msg = var
@@ -877,6 +777,7 @@ function deserialize(data, opts)
   if opts and opts.safe == false then return pcall(f) end
   local count, thread = 0, coroutine.running()
   local linecount = 0
+  log("got here")
   local h, m, c = debug.gethook(thread)
   debug.sethook(function (e, l)
     if (e == "call") then
@@ -896,17 +797,6 @@ function deserialize(data, opts)
   return (table.unpack or unpack)(res)
 end
 
-function split(stringA, sep)
-  local sep, fields = sep or ":", {}
-  local pattern = string.format("([^%s]+)", sep)
-  string.gsub(stringA, pattern, function(c) fields[#fields+1] = c end)
-  return fields
-end
-
-function trim(s)
-  return (s:gsub("^%s*(.-)%s*$", "%1"))
-end
-
 function saveToBook(player)
   local name = player.name or ""
   game.write_file("blueprints/"..name.."_defaultBookPreSave.lua", serpent.dump(defaultBook, {name="blueprints"}))
@@ -920,7 +810,7 @@ function loadFromBook(player)
   if #defaultBook > 0 then
     local name = player.name or ""
     game.write_file("blueprints/"..name.."_defaultBookpreLoad.lua", serpent.dump(global.blueprints[player.force.name], {name="blueprints"}))
-    for i, bp in pairs(defaultBook) do
+    for _, bp in pairs(defaultBook) do
       if not bp.version then
         player.print("Converting "..bp.name.. " to 0.1.2 format")
         convert_to_012(bp)
