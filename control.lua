@@ -87,24 +87,24 @@ saveBlueprint = function(player, blueprintIndex, show, folder)
   local blueprintData = global.blueprints[player.force.name][blueprintIndex]
   --local stringOutput = convertBlueprintDataToString(blueprintData)
   local stringOutput = serializeBlueprintData(blueprintData)
-  if stringOutput then
-    local filename = blueprintData.name
-    if filename == nil or filename == "" then
-      filename = "export"
-    end
-    folder = folder or "/"
-    if player.name ~= "" then
-      filename = "blueprints/".. folder .. player.name .. "_" .. filename .. ".blueprint"
-    else
-      filename = "blueprints/" .. folder .. filename .. ".blueprint"
-    end
-    game.write_file(filename , stringOutput)
-    if show then
-      Game.print_force(player.force, {"", player.name, {"msg-export-blueprint"}}) --TODO localisation
-      Game.print_force(player.force, "File: script-output/" .. filename) --TODO localisation
-    end
-  else
+  if not stringOutput then
     player.print({"msg-problem-blueprint"})
+    return
+  end
+  local filename = blueprintData.name
+  if filename == nil or filename == "" then
+    filename = "export"
+  end
+  folder = folder or ""
+  if player.name ~= "" then
+    filename = "blueprints/".. folder .. player.name .. "_" .. filename .. ".blueprint"
+  else
+    filename = "blueprints/" .. folder .. filename .. ".blueprint"
+  end
+  game.write_file(filename , stringOutput)
+  if show then
+    Game.print_force(player.force, {"", player.name, " ", {"msg-export-blueprint"}}) --TODO localisation
+    Game.print_force(player.force, "File: script-output/" .. filename) --TODO localisation
   end
 end
 
@@ -149,10 +149,10 @@ function convertBlueprints()
   for force, forceBP in pairs(global.blueprints) do
     local player = {name="", force={name=force}, print=function() return end}
     for i, bp in pairs(forceBP) do
-      saveBlueprint(player,i,false,"preConversion")
+      saveBlueprint(player,i,false,"preConversion/")
       if not bp.version then
         convert_to_012(bp)
-        saveBlueprint(player,i,false,"postConversion")
+        saveBlueprint(player,i,false,"postConversion/")
       end
     end
   end
@@ -174,6 +174,7 @@ local function on_configuration_changed(data)
     local newVersion = data.mod_changes[MOD_NAME].new_version
     local oldVersion = data.mod_changes[MOD_NAME].old_version
     -- mod was added to existing save
+    init_global()
     if not oldVersion then
       init_global()
       init_forces()
@@ -211,6 +212,7 @@ local function on_configuration_changed(data)
         convertBlueprints()
       end
     end
+    Game.print_all("Updated Foreman from ".. oldVersion .. " to " .. newVersion)
     global.bpVersion = "0.1.2"
     global.version = newVersion
   end
@@ -299,18 +301,8 @@ function getLastPage(displayCount, blueprintCount)
   end
 end
 
-function deserializeBlueprintData(dataString)
-  if dataString ~= nil then
-    local ok, copy = deserialize(dataString)
-    if ok then
-      return copy
-    end
-  end
-  return nil
-end
-
 function cleanupName(name)
-  return string.gsub(name, "[\\.?~!@#$%^&*(){}\"']", "")
+  return string.gsub(name:trim(), "[\\.?~!@#$%^&*(){}\"']", "")
 end
 
 function findBlueprintsInHotbar(player)
@@ -344,182 +336,192 @@ end
 
 function findSetupBlueprintInHotbar(player)
   local blueprints = findBlueprintsInHotbar(player)
-  if blueprints ~= nil then
-    for _, blueprint in ipairs(blueprints) do
-      if blueprint.is_blueprint_setup() then
-        return blueprint
-      end
+  if not blueprints then
+    return
+  end
+  for _, blueprint in ipairs(blueprints) do
+    if blueprint.is_blueprint_setup() then
+      return blueprint
     end
   end
 end
 
 function findEmptyBlueprintInHotbar(player)
   local blueprints = findBlueprintsInHotbar(player)
-  if blueprints ~= nil then
-    for _, blueprint in ipairs(blueprints) do
-      if not blueprint.is_blueprint_setup() then
-        return blueprint
-      end
+  if not blueprints then
+    return
+  end
+  for _, blueprint in ipairs(blueprints) do
+    if not blueprint.is_blueprint_setup() then
+      return blueprint
     end
   end
 end
 
 function createBlueprintFrame(gui, index, blueprintData)
-  if gui ~= nil then
-    local frame = gui.add({type="frame", name=index .. "_blueprintInfoFrame", direction="horizontal", style="blueprint_thin_frame"})
-    local buttonFlow = frame.add({type="flow", name=index .. "_InfoButtonFlow", direction="horizontal", style="blueprint_button_flow"})
-    buttonFlow.add({type="button", name=index .. "_blueprintInfoDelete", caption={"btn-blueprint-delete"}, style="blueprint_button_style"})
-    buttonFlow.add({type="button", name=index .. "_blueprintInfoLoad", caption={"btn-blueprint-load"}, style="blueprint_button_style"})
-    buttonFlow.add({type="button", name=index .. "_blueprintInfoExport", caption={"btn-blueprint-export"}, style="blueprint_button_style"})
-    buttonFlow.add({type="button", name=index .. "_blueprintInfoRename", caption={"btn-blueprint-rename"}, style="blueprint_button_style"})
-    frame.add({type="label", name=index .. "_blueprintInfoName", caption=blueprintData.name, style="blueprint_label_style"})
-    return frame
+  if not gui then
+    return
   end
+  local frame = gui.add({type="frame", name=index .. "_blueprintInfoFrame", direction="horizontal", style="blueprint_thin_frame"})
+  local buttonFlow = frame.add({type="flow", name=index .. "_InfoButtonFlow", direction="horizontal", style="blueprint_button_flow"})
+  buttonFlow.add({type="button", name=index .. "_blueprintInfoDelete", caption={"btn-blueprint-delete"}, style="blueprint_button_style"})
+  buttonFlow.add({type="button", name=index .. "_blueprintInfoLoad", caption={"btn-blueprint-load"}, style="blueprint_button_style"})
+  buttonFlow.add({type="button", name=index .. "_blueprintInfoExport", caption={"btn-blueprint-export"}, style="blueprint_button_style"})
+  buttonFlow.add({type="button", name=index .. "_blueprintInfoRename", caption={"btn-blueprint-rename"}, style="blueprint_button_style"})
+  frame.add({type="label", name=index .. "_blueprintInfoName", caption=blueprintData.name, style="blueprint_label_style"})
+  return frame
 end
 
 function createBlueprintWindow(player, blueprints, guiSettings)
-  if player ~= nil and guiSettings ~= nil then
-    debugLog("create window")
+  if not player or not guiSettings then
+    return
+  end
+  debugLog("create window")
 
-    local gui = player.gui.left
-    if gui.blueprintWindow ~= nil then
-      gui.blueprintWindow.destroy()
-    end
+  local gui = player.gui.left
+  if gui.blueprintWindow ~= nil then
+    gui.blueprintWindow.destroy()
+  end
 
-    guiSettings.windowVisable = true
-    if remote.interfaces.YARM then
-      guiSettings.YARM_old_expando = remote.call("YARM", "hide_expando", player.index)
-    end
+  guiSettings.windowVisable = true
+  if remote.interfaces.YARM then
+    guiSettings.YARM_old_expando = remote.call("YARM", "hide_expando", player.index)
+  end
 
-    local window = gui.add({type="flow", name="blueprintWindow", direction="vertical", style="blueprint_thin_flow"}) --style="fatcontroller_thin_frame"})  ,caption={"msg-blueprint-window"}
-    guiSettings.window = window
+  local window = gui.add({type="flow", name="blueprintWindow", direction="vertical", style="blueprint_thin_flow"}) --style="fatcontroller_thin_frame"})  ,caption={"msg-blueprint-window"}
+  guiSettings.window = window
 
-    local buttons = window.add({type="frame", name="blueprintButtons", direction="horizontal", style="blueprint_thin_frame"})
-    local buttonFlow = buttons.add({type="flow", name="pageButtonFlow", direction="horizontal", style="blueprint_button_flow"})
+  local buttons = window.add({type="frame", name="blueprintButtons", direction="horizontal", style="blueprint_thin_frame"})
+  local buttonFlow = buttons.add({type="flow", name="pageButtonFlow", direction="horizontal", style="blueprint_button_flow"})
 
-    if guiSettings.page <= 1 then
-      buttonFlow.add({type="button", name="blueprintPageBack", caption={"btn-blueprint-pageback"}, style="blueprint_disabled_button"})
-    else
-      buttonFlow.add({type="button", name="blueprintPageBack", caption={"btn-blueprint-pageback"}, style="blueprint_button_style"})
-    end
+  if guiSettings.page <= 1 then
+    buttonFlow.add({type="button", name="blueprintPageBack", caption={"btn-blueprint-pageback"}, style="blueprint_disabled_button"})
+  else
+    buttonFlow.add({type="button", name="blueprintPageBack", caption={"btn-blueprint-pageback"}, style="blueprint_button_style"})
+  end
 
-    local lastPage = getLastPage(guiSettings.displayCount, #blueprints)
+  local lastPage = getLastPage(guiSettings.displayCount, #blueprints)
 
-    buttonFlow.add({type="button", name="blueprintDisplayCount", caption=guiSettings.page .. "/" .. lastPage, style="blueprint_button_style"})
-    if guiSettings.page >= lastPage then
-      buttonFlow.add({type="button", name="blueprintPageForward", caption={"btn-blueprint-pageforward"}, style="blueprint_disabled_button"})
-    else
-      buttonFlow.add({type="button", name="blueprintPageForward", caption={"btn-blueprint-pageforward"}, style="blueprint_button_style"})
-    end
-    buttons.add({type="button", name="blueprintNew", caption={"btn-blueprint-new"}, style="blueprint_button_style"})
-    buttons.add({type="button", name="blueprintExportAll", caption={"btn-blueprint-export"}, style="blueprint_button_style"})
-    buttons.add({type="button", name="blueprintLoadAll", caption={"btn-blueprint-load"}, style="blueprint_button_style"})
-    --buttons.add({type="button", name="blueprintClose", caption={"btn-blueprint-close"}, style="blueprint_button_style"})
+  buttonFlow.add({type="button", name="blueprintDisplayCount", caption=guiSettings.page .. "/" .. lastPage, style="blueprint_button_style"})
+  if guiSettings.page >= lastPage then
+    buttonFlow.add({type="button", name="blueprintPageForward", caption={"btn-blueprint-pageforward"}, style="blueprint_disabled_button"})
+  else
+    buttonFlow.add({type="button", name="blueprintPageForward", caption={"btn-blueprint-pageforward"}, style="blueprint_button_style"})
+  end
+  buttons.add({type="button", name="blueprintNew", caption={"btn-blueprint-new"}, style="blueprint_button_style"})
+  buttons.add({type="button", name="blueprintExportAll", caption={"btn-blueprint-export"}, style="blueprint_button_style"})
+  buttons.add({type="button", name="blueprintLoadAll", caption={"btn-blueprint-load"}, style="blueprint_button_style"})
+  --buttons.add({type="button", name="blueprintClose", caption={"btn-blueprint-close"}, style="blueprint_button_style"})
 
-    local displayed = 0
-    local pageStart = ((guiSettings.page - 1) * guiSettings.displayCount)
-    for i,blueprintData in pairs(blueprints) do
-      if (i > pageStart) then
-        displayed = displayed + 1
-        createBlueprintFrame(window, i, blueprintData)
-        if displayed >= guiSettings.displayCount then
-          break
-        end
+  local displayed = 0
+  local pageStart = ((guiSettings.page - 1) * guiSettings.displayCount)
+  for i,blueprintData in pairs(blueprints) do
+    if (i > pageStart) then
+      displayed = displayed + 1
+      createBlueprintFrame(window, i, blueprintData)
+      if displayed >= guiSettings.displayCount then
+        break
       end
     end
-
-    return window
   end
+
+  return window
 end
 
 function createRenameWindow(gui, index, oldName)
-  if gui ~= nil then
-    if oldName == nil then
-      oldName = ""
-    end
-
-    local frame = gui.add({type="frame", name="blueprintRenameWindow", direction="vertical", caption={"window-blueprint-rename"}})
-    frame.add({type="textfield", name="blueprintRenameText"})
-    frame.blueprintRenameText.text = oldName
-
-    local flow = frame.add({type="flow", name="blueprintRenameFlow", direction="horizontal"})
-    flow.add({type="button", name="blueprintRenameCancel", caption={"btn-cancel"}})
-    flow.add({type="button", name=index .. "_blueprintRenameOK" , caption={"btn-ok"}})
-
-    return frame
+  if not gui then
+    return
   end
+  if oldName == nil then
+    oldName = ""
+  end
+
+  local frame = gui.add({type="frame", name="blueprintRenameWindow", direction="vertical", caption={"window-blueprint-rename"}})
+  frame.add({type="textfield", name="blueprintRenameText"})
+  frame.blueprintRenameText.text = oldName
+
+  local flow = frame.add({type="flow", name="blueprintRenameFlow", direction="horizontal"})
+  flow.add({type="button", name="blueprintRenameCancel", caption={"btn-cancel"}})
+  flow.add({type="button", name=index .. "_blueprintRenameOK" , caption={"btn-ok"}})
+
+  return frame
 end
 
 function createNewBlueprintWindow(gui, blueprintName)
-  if gui ~= nil then
-    local frame = gui.add({type="frame", name="blueprintNewWindow", direction="vertical", caption={"window-blueprint-new"}})
-    local flow = frame.add({type="flow", name="blueprintNewNameFlow", direction="horizontal"})
-    flow.add({type="label", name="blueprintNewNameLabel", caption={"lbl-blueprint-new-name"}})
-    flow.add({type="textfield", name="blueprintNewNameText"})
-    flow.blueprintNewNameText.text = blueprintName
-
-    flow = frame.add({type="flow", name="blueprintNewImportFlow", direction="horizontal"})
-    flow.add({type="label", name="blueprintNewImportLabel", caption={"lbl-blueprint-new-import"}})
-    flow.add({type="textfield", name="blueprintNewImportText"})
-
-    flow = frame.add({type="flow", name="blueprintNewButtonFlow", direction="horizontal"})
-    flow.add({type="button", name="blueprintNewCancel", caption={"btn-cancel"}})
-    flow.add({type="button", name="blueprintNewImport", caption={"btn-import"}})
-
-    return frame
+  if not gui then
+    return
   end
+  local frame = gui.add({type="frame", name="blueprintNewWindow", direction="vertical", caption={"window-blueprint-new"}})
+  local flow = frame.add({type="flow", name="blueprintNewNameFlow", direction="horizontal"})
+  flow.add({type="label", name="blueprintNewNameLabel", caption={"lbl-blueprint-new-name"}})
+  flow.add({type="textfield", name="blueprintNewNameText"})
+  flow.blueprintNewNameText.text = blueprintName
+
+  flow = frame.add({type="flow", name="blueprintNewImportFlow", direction="horizontal"})
+  flow.add({type="label", name="blueprintNewImportLabel", caption={"lbl-blueprint-new-import"}})
+  flow.add({type="textfield", name="blueprintNewImportText"})
+  
+  flow = frame.add({type="flow", name="blueprintNewFixFlow", direction="horizontal"})
+  flow.add({type="checkbox", name="fixPositions", caption="fix positions", state = true})
+
+  flow = frame.add({type="flow", name="blueprintNewButtonFlow", direction="horizontal"})
+  flow.add({type="button", name="blueprintNewCancel", caption={"btn-cancel"}})
+  flow.add({type="button", name="blueprintNewImport", caption={"btn-import"}})
+
+  return frame
 end
 
 function createDisplayCountWindow(gui, displayCount)
-  if gui ~= nil then
-    local window = gui.add({type="frame", name="blueprintDisplayCountWindow", caption={"window-blueprint-displaycount"}, direction="vertical" }) --style="fatcontroller_thin_frame"})
-    window.add({type="textfield", name="blueprintDisplayCountText", text=displayCount .. ""})
-    window.blueprintDisplayCountText.text = displayCount .. ""
-    window.add({type="button", name="blueprintDisplayCountOK", caption={"btn-ok"}})
-    return window
+  if not gui then
+    return
   end
+  local window = gui.add({type="frame", name="blueprintDisplayCountWindow", caption={"window-blueprint-displaycount"}, direction="vertical" }) --style="fatcontroller_thin_frame"})
+  window.add({type="textfield", name="blueprintDisplayCountText", text=displayCount .. ""})
+  window.blueprintDisplayCountText.text = displayCount .. ""
+  window.add({type="button", name="blueprintDisplayCountOK", caption={"btn-ok"}})
+  return window
 end
 
 --write to blueprint
 function setBlueprintData(force, blueprintStack, blueprintData)
-  if blueprintStack ~= nil then
-    --remove unresearched/invalid recipes
-    local entities = util.table.deepcopy(blueprintData.entities)
-    local tiles = blueprintData.tiles
-    for _, entity in pairs(entities) do
-      if entity.recipe then
-        if not force.recipes[entity.recipe] or not force.recipes[entity.recipe].enabled then
-          entity.recipe = nil
-        end
-      end
-    end
-    saveVar(entities, "test")
-    blueprintStack.set_blueprint_entities(entities)
-    blueprintStack.set_blueprint_tiles(tiles)
-    saveVar({e=blueprintStack.get_blueprint_entities(),t=blueprintStack.get_blueprint_tiles()}, "test2")
-    --debugDump(serpent.block(blueprintData.entities),true)
-    local newTable = {}
-    for i = 0, #blueprintData.icons do
-      if blueprintData.icons[i] then
-        table.insert(newTable, blueprintData.icons[i])
-      end
-    end
-    blueprintStack.blueprint_icons = newTable
-    return true
+  if not blueprintStack then
+    return false
   end
-  return false
+  --remove unresearched/invalid recipes
+  local entities = util.table.deepcopy(blueprintData.entities)
+  local tiles = blueprintData.tiles
+  for _, entity in pairs(entities) do
+    if entity.recipe then
+      if not force.recipes[entity.recipe] or not force.recipes[entity.recipe].enabled then
+        entity.recipe = nil
+      end
+    end
+  end
+  saveVar(entities, "test")
+  blueprintStack.set_blueprint_entities(entities)
+  blueprintStack.set_blueprint_tiles(tiles)
+  saveVar({e=blueprintStack.get_blueprint_entities(),t=blueprintStack.get_blueprint_tiles()}, "test2")
+  --debugDump(serpent.block(blueprintData.entities),true)
+  local newTable = {}
+  for i = 0, #blueprintData.icons do
+    if blueprintData.icons[i] then
+      table.insert(newTable, blueprintData.icons[i])
+    end
+  end
+  blueprintStack.blueprint_icons = newTable
+  return true
 end
 
 function getBlueprintData(blueprintStack)
-  if blueprintStack ~= nil and blueprintStack.is_blueprint_setup() then
-    local data = {}
-    data.icons = blueprintStack.blueprint_icons
-    data.entities = blueprintStack.get_blueprint_entities()
-    data.tiles = blueprintStack.get_blueprint_tiles()
-    data.version = global.bpVersion
-    return data
+  if not blueprintStack or not blueprintStack.is_blueprint_setup() then
+    return
   end
-  return nil
+  local data = {}
+  data.icons = blueprintStack.blueprint_icons
+  data.entities = blueprintStack.get_blueprint_entities()
+  data.tiles = blueprintStack.get_blueprint_tiles()
+  data.version = global.bpVersion
+  return data
 end
 
 function debugDump(var, force)
@@ -571,15 +573,19 @@ local function on_gui_click(event)
     local guiSettings = global.guiSettings[event.element.player_index]
     local data = split(event.element.name,"_")
     local blueprintIndex = tonumber(data[1])
+
+    if not player then
+      Game.print_all("Something went horribly wrong")
+      return
+    end
+
     if event.element.name == "blueprintTools" or event.element.name == "blueprintClose" then
-      if player ~= nil then
-        if player.gui.left.blueprintWindow == nil then
-          refreshWindow = true
-        else
-          player.gui.left.blueprintWindow.destroy()
-          if remote.interfaces.YARM and guiSettings.YARM_old_expando then
-            remote.call("YARM", "show_expando", player.index)
-          end
+      if player.gui.left.blueprintWindow == nil then
+        refreshWindow = true
+      else
+        player.gui.left.blueprintWindow.destroy()
+        if remote.interfaces.YARM and guiSettings.YARM_old_expando then
+          remote.call("YARM", "show_expando", player.index)
         end
       end
     elseif event.element.name == "blueprintPageBack" then
@@ -625,45 +631,48 @@ local function on_gui_click(event)
         table.remove(global.blueprints[player.force.name], blueprintIndex)
         refreshWindows = true
       end
-    elseif string.ends_with(event.element.name, "_blueprintInfoLoad") then -- Load TOOOOOOOOOOOOOOOOO hotbar
-      if blueprintIndex ~= nil then
-        local blueprint = findEmptyBlueprintInHotbar(player)
+    elseif string.ends_with(event.element.name, "_blueprintInfoLoad") then
+      -- Load TOOOOOOOOOOOOOOOOO hotbar
+      if not blueprintIndex then
+        return
+      end
+      local blueprint = findEmptyBlueprintInHotbar(player)
 
-        if not blueprint and config.overwrite then
-          blueprint = findBlueprintInHotbar(player)
-          if blueprint and config.useCircuit then
-            if player.get_item_count("electronic-circuit") > 0 then
-              player.remove_item{name="electronic-circuit", count=1}
-            else
-              player.print({"msg-no-circuit"})
-              blueprint = nil
-              return
-            end
+      if not blueprint and config.overwrite then
+        blueprint = findBlueprintInHotbar(player)
+        if blueprint and config.useCircuit then
+          if player.get_item_count("electronic-circuit") > 0 then
+            player.remove_item{name="electronic-circuit", count=1}
+          else
+            player.print({"msg-no-circuit"})
+            blueprint = nil
+            return
           end
         end
+      end
 
-        local blueprintData = global.blueprints[player.force.name][blueprintIndex]
+      local blueprintData = global.blueprints[player.force.name][blueprintIndex]
 
-        if blueprint ~= nil and blueprintData ~= nil then
-          local status, err = pcall(function() setBlueprintData(player.force, blueprint, blueprintData) end )
-          if status then
-            player.print({"msg-blueprint-loaded"})
-          else
-            player.print({"msg-blueprint-notloaded"})
-            player.print(err)
-          end
+      if blueprint ~= nil and blueprintData ~= nil then
+        local status, err = pcall(function() setBlueprintData(player.force, blueprint, blueprintData) end )
+        if status then
+          player.print({"msg-blueprint-loaded"})
         else
-          if not config.overwrite then
-            player.print({"msg-no-empty-blueprint"})
-          else
-            player.print({"msg-no-blueprint"})
-          end
+          player.print({"msg-blueprint-notloaded"})
+          player.print(err)
         end
-    end
-    elseif string.ends_with(event.element.name, "_blueprintInfoExport") then -- Export to file
+      else
+        if not config.overwrite then
+          player.print({"msg-no-empty-blueprint"})
+        else
+          player.print({"msg-no-blueprint"})
+        end
+      end
+    elseif string.ends_with(event.element.name, "_blueprintInfoExport") then
+      -- Export to file
       if blueprintIndex ~= nil then
         saveBlueprint(player, blueprintIndex, true)
-    end
+      end
     elseif string.ends_with(event.element.name, "_blueprintInfoRename") then
       if blueprintIndex ~= nil and guiSettings ~= nil then
         if guiSettings.renameWindowVisable then
@@ -683,9 +692,10 @@ local function on_gui_click(event)
         name = cleanupName(name)
       end
 
-      local importString = guiSettings.newWindow.blueprintNewImportFlow.blueprintNewImportText.text
+      local importString = string.trim(guiSettings.newWindow.blueprintNewImportFlow.blueprintNewImportText.text)
       local blueprintData
       if importString == nil or importString == "" then
+        -- read blueprint in hotbar
         local blueprint = findSetupBlueprintInHotbar(player)
         if blueprint == nil then
           player.print({"msg-no-blueprint"})
@@ -697,6 +707,7 @@ local function on_gui_click(event)
           return
         end
       else
+        -- read pasted string
         blueprintData = BlueprintString.fromString(importString)
         if not blueprintData then
           player.print({"msg-problem-string"})
@@ -705,9 +716,12 @@ local function on_gui_click(event)
         if string.starts_with(importString, "do local") then
           log("local " .. serpent.line(blueprintData.name) .. " " .. serpent.line(blueprintData.version))
         else
-          -- for blueprint string we assume it has the correct version
           if not blueprintData.version then
-            blueprintData.version = "0.1.2"
+            local fix = event.element.parent.parent.blueprintNewFixFlow.fixPositions.state
+            log(serpent.line(fix))
+            if not fix then
+              blueprintData.version = global.bpVersion
+            end
           end
           log("bps " .. serpent.line(blueprintData.name) .. " " .. serpent.line(blueprintData.version))
         end
@@ -729,7 +743,7 @@ local function on_gui_click(event)
       guiSettings.newWindow.destroy()
       guiSettings.newWindowVisable = false
       refreshWindows = true
-      
+
     elseif event.element.name == "blueprintRenameCancel" then
       if guiSettings.renameWindowVisable then
         guiSettings.renameWindow.destroy()
