@@ -211,8 +211,8 @@ local function on_configuration_changed(data)
       if oldVersion < "0.1.2" then
         convertBlueprints()
       end
-    end
     Game.print_all("Updated Foreman from ".. oldVersion .. " to " .. newVersion)
+    end
     global.bpVersion = "0.1.2"
     global.version = newVersion
   end
