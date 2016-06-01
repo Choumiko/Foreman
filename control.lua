@@ -73,14 +73,15 @@ local function on_load()
 -- set metatables, register conditional event handlers, local references to global
 end
 
-function serializeBlueprintData(blueprintData)
-  if blueprintData ~= nil and blueprintData.icons ~= nil and (blueprintData.entities ~= nil or blueprintData.tiles ~= nil) then
-    if not blueprintData.version then
-      blueprintData.version = global.bpVersion
-    end
-    return serpent.block(blueprintData, {name="blueprintData"})
+function serializeBlueprintData(data)
+  if data ~= nil and data.icons ~= nil and (data.entities ~= nil or data.tiles ~= nil) then
+    return serpent.dump(data, {name="blueprintData", comment=false, sparse=true})
   end
   return nil
+end
+
+function deserializeBlueprintData(data)
+  return data
 end
 
 saveBlueprint = function(player, blueprintIndex, show, folder)
@@ -159,10 +160,10 @@ function convertBlueprints()
   log("Done")
 end
 
-function saveVar(var, name)
+function saveVar(var, name,sparse)
   var = var or global
   local n = name or "foreman"
-  game.write_file("blueprint-string/"..n..".lua", serpent.block(var, {name="global", sparse=true}))
+  game.write_file("blueprint/"..n..".lua", serpent.block(var, {name="global", sparse=sparse, comment=false}))
 end
 
 -- run once
@@ -211,7 +212,7 @@ local function on_configuration_changed(data)
       if oldVersion < "0.1.2" then
         convertBlueprints()
       end
-    Game.print_all("Updated Foreman from ".. oldVersion .. " to " .. newVersion)
+      Game.print_all("Updated Foreman from ".. oldVersion .. " to " .. newVersion)
     end
     global.bpVersion = "0.1.2"
     global.version = newVersion
@@ -249,34 +250,8 @@ script.on_load(on_load)
 script.on_configuration_changed(on_configuration_changed)
 script.on_event(defines.events.on_player_created, on_player_created)
 script.on_event(defines.events.on_force_created, on_force_created)
-script.on_event(defines.events.on_forces_merging, on_forces_merging)
+--script.on_event(defines.events.on_forces_merging, on_forces_merging)
 script.on_event(defines.events.on_research_finished, on_research_finished)
-
-function destroyGuis(player, guiSettings)
-  if player ~= nil and guiSettings ~= nil then
-    if guiSettings.window then
-      guiSettings.windowVisable = false
-      guiSettings.window.destroy()
-    end
-    if guiSettings.newWindow then
-      guiSettings.newWindowVisable = false
-      guiSettings.newWindow.destroy()
-    end
-    if guiSettings.renameWindow then
-      guiSettings.renameWindowVisable = false
-      guiSettings.renameWindow.destroy()
-    end
-    if guiSettings.disableCountWindow then
-      guiSettings.disableCountWindowVisable = false
-      guiSettings.disableCountWindow.destroy()
-    end
-
-    if player.gui.top.blueprintTools then
-      guiSettings.foremanVisable = false
-      player.gui.top.blueprintTools.destroy()
-    end
-  end
-end
 
 function split(stringA, sep)
   sep = sep or ":"
@@ -460,7 +435,7 @@ function createNewBlueprintWindow(gui, blueprintName)
   flow = frame.add({type="flow", name="blueprintNewImportFlow", direction="horizontal"})
   flow.add({type="label", name="blueprintNewImportLabel", caption={"lbl-blueprint-new-import"}})
   flow.add({type="textfield", name="blueprintNewImportText"})
-  
+
   flow = frame.add({type="flow", name="blueprintNewFixFlow", direction="horizontal"})
   flow.add({type="checkbox", name="fixPositions", caption="fix positions", state = true})
 
@@ -708,7 +683,14 @@ local function on_gui_click(event)
         end
       else
         -- read pasted string
-        blueprintData = BlueprintString.fromString(importString)
+        if string.starts_with(importString, "do local") then
+          blueprintData = BlueprintString.load(importString)
+          if blueprintData then
+            blueprintData = deserializeBlueprintData(blueprintData)
+          end
+        else
+          blueprintData = BlueprintString.fromString(importString)
+        end
         if not blueprintData then
           player.print({"msg-problem-string"})
           return
@@ -718,7 +700,6 @@ local function on_gui_click(event)
         else
           if not blueprintData.version then
             local fix = event.element.parent.parent.blueprintNewFixFlow.fixPositions.state
-            log(serpent.line(fix))
             if not fix then
               blueprintData.version = global.bpVersion
             end
@@ -814,6 +795,10 @@ remote.add_interface("foreman",
       init_global()
       init_forces()
       init_players(true)
+    end,
+    
+    fixBlueprints = function()
+      convertBlueprints()
     end
 
   })
