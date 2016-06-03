@@ -1,4 +1,7 @@
-require "defines"
+if not defines then
+  require "defines"
+end
+
 require "util"
 require 'stdlib.string'
 require 'stdlib.area.position'
@@ -314,7 +317,7 @@ function findSetupBlueprintInHotbar(player)
   if not blueprints then
     return
   end
-  for _, blueprint in ipairs(blueprints) do
+  for _, blueprint in pairs(blueprints) do
     if blueprint.is_blueprint_setup() then
       return blueprint
     end
@@ -326,7 +329,7 @@ function findEmptyBlueprintInHotbar(player)
   if not blueprints then
     return
   end
-  for _, blueprint in ipairs(blueprints) do
+  for _, blueprint in pairs(blueprints) do
     if not blueprint.is_blueprint_setup() then
       return blueprint
     end
@@ -465,17 +468,40 @@ function setBlueprintData(force, blueprintStack, blueprintData)
   --remove unresearched/invalid recipes
   local entities = util.table.deepcopy(blueprintData.entities)
   local tiles = blueprintData.tiles
+--  local rename = {
+--    ["basic-transport-belt"] = "transport-belt",
+--    ["transport-belt-to-ground"] = "underground-belt",
+--    ["basic-splitter"] = "splitter",
+--    ["basic-inserter"] = "inserter",
+--    ["basic-mining-drill"] = "electric-mining-drill",
+--    ["basic_beacon"] = "beacon",
+--  }
+--  local rename_recipes = {
+--    ["basic-bullet-magazine"] = "firearm-magazine",
+--    ["piercing-bullet-magazine"] = "piercing-rounds-magazine",
+--    ["basic-grenade"] = "grenade",
+--    ["basic-armor"] = "light-armor",
+--    ["basic-modular-armor"] = "modular-armor",
+--    ["basic-laser-defense-equipment"] = "personal-laser-defense-equipment",
+--    ["basic-exoskeleton-equipment"] = "exoskeleton-equipment",
+--  }
   for _, entity in pairs(entities) do
+    --TODO properly convert for 0.13, for now, search/replace everytime
+    --entity.name = rename[entity.name] or entity.name
+
     if entity.recipe then
+      --entity.recipe = rename_recipes[entity.recipe] or entity.recipe
       if not force.recipes[entity.recipe] or not force.recipes[entity.recipe].enabled then
         entity.recipe = nil
       end
     end
   end
-  saveVar(entities, "test")
+
+
+  --saveVar(entities, "test")
   blueprintStack.set_blueprint_entities(entities)
   blueprintStack.set_blueprint_tiles(tiles)
-  saveVar({e=blueprintStack.get_blueprint_entities(),t=blueprintStack.get_blueprint_tiles()}, "test2")
+  --saveVar({e=blueprintStack.get_blueprint_entities(),t=blueprintStack.get_blueprint_tiles()}, "test2")
   --debugDump(serpent.block(blueprintData.entities),true)
   local newTable = {}
   for i = 0, #blueprintData.icons do
@@ -796,7 +822,7 @@ remote.add_interface("foreman",
       init_forces()
       init_players(true)
     end,
-    
+
     fixBlueprints = function()
       convertBlueprints()
     end

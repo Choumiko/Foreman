@@ -43,7 +43,7 @@ function fix_entities(array)
   if (not array or type(array) ~= "table") then return {} end
   local entities = {}
   local count = 1
-  for _, entity in ipairs(array) do
+  for _, entity in pairs(array) do
     if (type(entity) == 'table') then
       entity.entity_number = count
       entities[count] = entity
@@ -73,7 +73,7 @@ end
 
 function remove_useless_fields(entities)
   if (not entities or type(entities) ~= "table") then return end
-  for _, entity in ipairs(entities) do
+  for _, entity in pairs(entities) do
     if (type(entity) ~= "table") then entity = {} end
 
     -- Entity_number is calculated in fix_entities()
@@ -90,7 +90,7 @@ function reformat_icons(array)
     table.insert(icons, {index=count, name=array[0].name})
     count = count + 1
   end
-  for _, icon in ipairs(array) do
+  for _, icon in pairs(array) do
     if (count > 4) then break end
     table.insert(icons, {index=count, name=icon.name})
     count = count + 1
