@@ -441,6 +441,9 @@ function createNewBlueprintWindow(gui, blueprintName)
 
   flow = frame.add({type="flow", name="blueprintNewFixFlow", direction="horizontal"})
   flow.add({type="checkbox", name="fixPositions", caption="fix positions", state = true})
+  
+  flow = frame.add({type="flow", name="blueprintNewUnsafeFlow", direction="horizontal"})
+  flow.add({type="checkbox", name="unsafe", caption="allow scripts (unsafe!)", state = false})
 
   flow = frame.add({type="flow", name="blueprintNewButtonFlow", direction="horizontal"})
   flow.add({type="button", name="blueprintNewCancel", caption={"btn-cancel"}})
@@ -710,7 +713,12 @@ local function on_gui_click(event)
       else
         -- read pasted string
         if string.starts_with(importString, "do local") then
-          blueprintData = BlueprintString.load(importString)
+          local unsafe = event.element.parent.parent.blueprintNewUnsafeFlow.unsafe.state
+          if unsafe then 
+            blueprintData = loadstring(importString)()
+          else
+            blueprintData = BlueprintString.load(importString)
+          end
           if blueprintData then
             blueprintData = deserializeBlueprintData(blueprintData)
           end
