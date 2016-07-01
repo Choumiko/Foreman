@@ -4,5 +4,6 @@
 	"version":"{{VERSION}}",
 	"title":"Foreman",
 	"description":"For managing all your blueprint needs.",
-	"dependencies": ["base >= 0.12.32"]
+	"dependencies": ["base >= 0.13.0"],
+	"factorio_version": "0.13"
 } 
