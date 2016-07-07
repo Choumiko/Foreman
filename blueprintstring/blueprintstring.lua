@@ -1,27 +1,67 @@
 --[[
+
+
 Blueprint String
+
+
+
+
 
 This library helps you convert blueprints to text strings, and text strings to blueprints.
 
+
+
+
+
 Saving Blueprints
+
+
 -----------------
+
+
 local BlueprintString = require "blueprintstring.blueprintstring"
+
+
 local blueprint_table = {}
+
+
 blueprint_table.icons = blueprint.blueprint_icons
+
+
 blueprint_table.entities = blueprint.get_blueprint_entities()
+
+
 blueprint_table.myfield = "Add some extra fields if you want"
+
+
 local str = BlueprintString.toString(blueprint_table)
 
+
+
+
+
 Loading Blueprints
+
+
 ------------------
+
+
 local BlueprintString = require "blueprintstring.blueprintstring"
+
+
 local blueprint_table = BlueprintString.fromString(str)
+
+
 blueprint.set_blueprint_entities(blueprint_table.entities)
+
+
 blueprint.blueprint_icons = blueprint_table.icons
 
+
+
+
+
 ]]--
-
-
 
 local serpent = require "serpent0272"
 local inflate = require "deflatelua"
@@ -43,8 +83,33 @@ function fix_entities(array)
   if (not array or type(array) ~= "table") then return {} end
   local entities = {}
   local count = 1
-  for _, entity in pairs(array) do
+  for _, entity in ipairs(array) do
     if (type(entity) == 'table') then
+      -- Factorio 0.12 format
+      if (entity.conditions and type(entity.conditions == 'table')) then
+        if (entity.conditions.circuit) then
+          entity.control_behavior = {circuit_condition = entity.conditions.circuit}
+          entity.conditions.circuit = nil
+        end
+        if (entity.conditions.arithmetic) then
+          entity.control_behavior = entity.control_behavior or {}
+          entity.control_behavior.arithmetic_conditions = entity.conditions.arithmetic
+          entity.conditions.arithmetic = nil
+        end
+        if (entity.conditions.decider) then
+          entity.control_behavior = entity.control_behavior or {}
+          entity.control_behavior.decider_conditions = entity.conditions.decider
+          entity.conditions.decider = nil
+        end
+        entity.conditions = nil
+      end
+      if entity.filters and game.entity_prototypes[entity.name] and game.entity_prototypes[entity.name].type == "constant-combinator" then
+        entity.control_behavior = entity.control_behavior or {}
+        entity.control_behavior.filters = entity.filters
+        entity.filters = nil
+      end
+
+      -- Add entity number
       entity.entity_number = count
       entities[count] = entity
       count = count + 1
@@ -60,11 +125,16 @@ function fix_icons(array)
   local count = 1
   for _, icon in pairs(array) do
     if (count > 4) then break end
-    if (type(icon) == 'string') then
-      table.insert(icons, {index = count, name = icon})
+    if (type(icon) == "table" and icon.signal) then
+      -- Factorio 0.13 format
+      table.insert(icons, {index = count, signal = icon.signal})
       count = count + 1
-    elseif (type(icon) == 'table' and icon.name) then
-      table.insert(icons, {index = count, name = icon.name})
+    elseif (type(icon) == "table" and icon.name) then
+      -- Factorio 0.12 format
+      if (icon.name == "straight-rail" or icon.name == "curved-rail") then
+        icon.name = "rail"
+      end
+      table.insert(icons, {index = count, signal = {type = "item", name = icon.name}})
       count = count + 1
     end
   end
@@ -73,7 +143,7 @@ end
 
 function remove_useless_fields(entities)
   if (not entities or type(entities) ~= "table") then return end
-  for _, entity in pairs(entities) do
+  for _, entity in ipairs(entities) do
     if (type(entity) ~= "table") then entity = {} end
 
     -- Entity_number is calculated in fix_entities()
@@ -81,21 +151,6 @@ function remove_useless_fields(entities)
 
     if (item_count(entity) == 0) then entity = nil end
   end
-end
-
-function reformat_icons(array)
-  local icons = {}
-  local count = 1
-  if (array[0]) then
-    table.insert(icons, {index=count, name=array[0].name})
-    count = count + 1
-  end
-  for _, icon in pairs(array) do
-    if (count > 4) then break end
-    table.insert(icons, {index=count, name=icon.name})
-    count = count + 1
-  end
-  return icons
 end
 
 -- ====================================================
@@ -108,7 +163,6 @@ M.LINE_LENGTH = 120  -- Length of lines in compressed string. 0 means unlimited 
 
 M.toString = function(blueprint_table)
   remove_useless_fields(blueprint_table.entities)
-  blueprint_table.icons = reformat_icons(blueprint_table.icons)
   local str = serpent.dump(blueprint_table)
   if (M.COMPRESS_STRINGS) then
     str = deflate.gzip(str)
@@ -136,6 +190,28 @@ M.fromString = function(data)
     end
   end
 
+  -- Factorio 0.12 to 0.13 entity rename
+  data = data:gsub("[%w-]+", {
+    ["basic-accumulator"] = "accumulator",
+    ["basic-armor"] = "light-armor",
+    ["basic-beacon"] = "beacon",
+    ["basic-bullet-magazine"] = "firearm-magazine",
+    ["basic-exoskeleton-equipment"] = "exoskeleton-equipment",
+    ["basic-grenade"] = "grenade",
+    ["basic-inserter"] = "inserter",
+    ["basic-mining-drill"] = "electric-mining-drill",
+    ["basic-modular-armor"] = "modular-armor",
+    ["basic-laser-defense-equipment"] = "personal-laser-defense-equipment",
+    ["basic-transport-belt"] = "transport-belt",
+    ["basic-transport-belt-to-ground"] = "underground-belt",
+    ["basic-splitter"] = "splitter",
+    ["express-transport-belt-to-ground"] = "express-underground-belt",
+    ["fast-transport-belt-to-ground"] = "fast-underground-belt",
+    ["piercing-bullet-magazine"] = "piercing-rounds-magazine",
+    ["smart-chest"] = "steel-chest",
+    ["smart-inserter"] = "filter-inserter",
+  })
+
   local status, result = serpent.load(data)
   if (not status) then
     --game.player.print(result)
@@ -146,24 +222,6 @@ M.fromString = function(data)
   result.icons = fix_icons(result.icons)
 
   return result
-end
-
-M.load = function(data)
-  local status, result = serpent.load(data)
-  if (not status) then
-    --game.player.print(result)
-    return nil
-  end
-  return result
-end
-
-M.compress = function(data)
-  local str = deflate.gzip(serpent.dump(data))
-  str = base64.enc(str)
-  if (M.LINE_LENGTH > 0) then
-    str = str:gsub( ("%S"):rep(M.LINE_LENGTH), "%1\n" )
-  end
-  return str
 end
 
 return M
