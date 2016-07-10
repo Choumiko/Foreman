@@ -586,15 +586,6 @@ local function on_gui_click(event)
 
       if not blueprint and config.overwrite then
         blueprint = findBlueprintInHotbar(player)
-        if blueprint and config.useCircuit then
-          if player.get_item_count("electronic-circuit") > 0 then
-            player.remove_item{name="electronic-circuit", count=1}
-          else
-            player.print({"msg-no-circuit"})
-            blueprint = nil
-            return
-          end
-        end
       end
 
       local blueprintData = global.blueprints[player.force.name][blueprintIndex]
