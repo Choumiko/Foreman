@@ -2,10 +2,10 @@
 
 Foreman is a mod for managing blueprints in game. You can manage a list of blueprints in your save game, export them to text and import blueprints others have shared.
 
-
 ![Main GUI](http://i.imgur.com/AicS1tS.png)
 
-###Features
+Features
+---
 - Save blueprints from toolbar/cursor (+ button)
 - Import blueprint from text (+ button)
 - Fix positions in blueprints (f button)
@@ -14,8 +14,18 @@ Foreman is a mod for managing blueprints in game. You can manage a list of bluep
 - Rename blueprints (n button)
 - Imports/Exports [Blueprint Strings](https://mods.factorio.com/mods/DaveMcW/blueprint-string)  (Thanks Dave!)
 
-###Todo
+Todo
+---
 - Export/Import blueprint books
 - icons instead of text buttons
 
-Fixing positions of blueprints should only be necessary for exported blueprints before Factorio 0.12.32 
+Fixing positions of blueprints should only be necessary for exported blueprints before Factorio 0.12.32
+
+***
+Changelog
+---
+0.1.26
+
+- added settings button
+- added setting to overwrite blueprints if no empty blueprint is found when loading a string
+- display count setting: How many blueprints to show befor scrolling

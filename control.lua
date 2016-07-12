@@ -4,7 +4,6 @@ require 'stdlib.area.position'
 require 'stdlib.game'
 
 BlueprintString = require 'blueprintstring.blueprintstring'
-require "config"
 MOD_NAME = "Foreman"
 
 function debugLog(message, force)
@@ -25,6 +24,9 @@ end
 local function init_player(player)
   local i = player.index
   global.guiSettings[i] = global.guiSettings[i] or {page = 1, displayCount = 10}
+  if global.guiSettings[i].overwrite == nil then
+    global.guiSettings[i].overwrite = false
+  end
 end
 
 function createBlueprintButton(player, guiSettings)
@@ -129,13 +131,13 @@ function saveVar(var, name,sparse)
 end
 
 -- run once
-local function on_configuration_changed(data)
-  if not data or not data.mod_changes then
+local function on_configuration_changed(changes)
+  if not changes.mod_changes then
     return
   end
-  if data.mod_changes[MOD_NAME] then
-    local newVersion = data.mod_changes[MOD_NAME].new_version
-    local oldVersion = data.mod_changes[MOD_NAME].old_version
+  if changes.mod_changes[MOD_NAME] then
+    local newVersion = changes.mod_changes[MOD_NAME].new_version
+    local oldVersion = changes.mod_changes[MOD_NAME].old_version
     -- mod was added to existing save
     init_global()
     if not oldVersion then
@@ -155,11 +157,7 @@ local function on_configuration_changed(data)
           global.guiSettings[i].blueprintCount = nil
         end
         if oldVersion < "0.1.0" then
-          for _,f in pairs(game.forces) do
-            if not config.ignoreForces[f.name] then
-              global.blueprints[f.name] = util.table.deepcopy(tmp)
-            end
-          end
+          global.blueprints.player = util.table.deepcopy(tmp)
         elseif oldVersion == "0.1.0" then
           for i,p in pairs(game.players) do
             local f = p.force.name
@@ -186,7 +184,9 @@ local function on_configuration_changed(data)
           debugLog("Error converting blueprints")
           debugLog(err, true)
         end
-
+      end
+      if oldVersion < "0.1.26" then
+        init_players()
       end
       Game.print_all("Updated Foreman from ".. oldVersion .. " to " .. newVersion)
     end
@@ -309,6 +309,33 @@ function findEmptyBlueprintInHotbar(player)
   end
 end
 
+function createSettingsWindow(player, guiSettings)
+  if not player.gui.center.blueprintSettingsWindow then
+    local frame = player.gui.center.add{
+      type="frame",
+      name="blueprintSettingsWindow",
+      direction="vertical",
+      caption={"window-blueprint-settings"}
+    }
+
+    --local flow = frame.add({type="flow", name="blueprintSettingsFlow", direction="vertical"})
+    local overwrite = frame.add({type="checkbox", name="blueprintSettingOverwrite", caption={"lbl-blueprint-overwrite"}, state = guiSettings.overwrite})
+    overwrite.tooltip = {"blueprint-tt-overwrite"}
+    local displayCountFlow = frame.add({type="flow", name="blueprintDisplayCountFlow", direction="horizontal" }) --style="fatcontroller_thin_frame"})
+    displayCountFlow.add{type="label", caption={"window-blueprint-displaycount"}}
+
+    local displayCount = displayCountFlow.add({type="textfield", name="blueprintDisplayCountText", text=guiSettings.displayCount .. ""})
+    displayCount.style.minimal_width = 30
+    local buttonFlow = frame.add{type="flow", direction="horizontal"}
+    buttonFlow.add{type="button", name="blueprintSettingsOk", caption={"btn-ok"}}
+    buttonFlow.add{type="button", name="blueprintSettingsCancel", caption={"btn-cancel"}}
+
+    return {overwrite = overwrite, displayCount = displayCount}
+  else
+    player.gui.center.blueprintSettingsWindow.destroy()
+  end
+end
+
 function createBlueprintFrame(gui, index, blueprintData)
   if not gui then
     return
@@ -320,7 +347,6 @@ function createBlueprintFrame(gui, index, blueprintData)
   buttonFlow.add({type="button", name=index .. "_blueprintInfoExport", caption={"btn-blueprint-export"}, style="blueprint_button_style"})
   buttonFlow.add({type="button", name=index .. "_blueprintInfoRename", caption={"btn-blueprint-rename"}, style="blueprint_button_style"})
   frame.add({type="label", name=index .. "_blueprintInfoName", caption=blueprintData.name, style="blueprint_label_style"})
-  return frame
 end
 
 function createBlueprintWindow(player, blueprints, guiSettings)
@@ -361,19 +387,33 @@ function createBlueprintWindow(player, blueprints, guiSettings)
   end
   buttons.add({type="button", name="blueprintNew", caption={"btn-blueprint-new"}, style="blueprint_button_style"})
   buttons.add({type="button", name="blueprintFixPositions", caption={"btn-blueprint-fix"}, style="blueprint_button_style"})
+  buttons.add({type="button", name="blueprintSettings", style="blueprint_settings_button"})
 
-  local displayed = 0
-  local pageStart = ((guiSettings.page - 1) * guiSettings.displayCount)
-  for i,blueprintData in pairs(blueprints) do
-    if (i > pageStart) then
-      displayed = displayed + 1
-      createBlueprintFrame(window, i, blueprintData)
-      if displayed >= guiSettings.displayCount then
-        break
-      end
+  local frame = window.add({type="frame", name="blueprintFrame", direction="vertical"})
+  frame.style.left_padding = 0
+  frame.style.right_padding = 0
+  frame.style.top_padding = 0
+  frame.style.bottom_padding = 0
+  frame.style.resize_row_to_width=true
+  local pane = frame.add{
+    type = "scroll-pane",
+    name = "scroll_me",
+    style = "blueprint_scroll_style"
+  }
+  pane.style.maximal_height = math.ceil(41.5*guiSettings.displayCount)
+  pane.horizontal_scroll_policy = "never"
+  pane.vertical_scroll_policy = "auto"
+  local flow = pane.add{
+    type="flow",
+    direction="vertical",
+    style="blueprint_thin_flow"
+  }
+  for j=0,1 do
+    for i,blueprintData in pairs(blueprints) do
+      createBlueprintFrame(flow, i+j*5, blueprintData)
     end
   end
-
+  createBlueprintFrame(flow, 11, blueprints[1])
   return window
 end
 
@@ -419,7 +459,6 @@ function createNewBlueprintWindow(gui, blueprintName)
   flow = frame.add({type="flow", name="blueprintNewButtonFlow", direction="horizontal"})
   flow.add({type="button", name="blueprintNewCancel", caption={"btn-cancel"}})
   flow.add({type="button", name="blueprintNewImport", caption={"btn-import"}})
-
   return frame
 end
 
@@ -492,7 +531,7 @@ function debugDump(var, force)
   end
 end
 
-local function on_gui_click(event)
+local function on_gui_click(event_)
   local _, err = pcall(function(event)
     local refreshWindow = false
     local refreshWindows = false
@@ -584,7 +623,7 @@ local function on_gui_click(event)
       end
       local blueprint = findEmptyBlueprintInHotbar(player)
 
-      if not blueprint and config.overwrite then
+      if not blueprint and guiSettings.overwrite then
         blueprint = findBlueprintInHotbar(player)
       end
 
@@ -599,7 +638,7 @@ local function on_gui_click(event)
           player.print(err)
         end
       else
-        if not config.overwrite then
+        if not guiSettings.overwrite then
           player.print({"msg-no-empty-blueprint"})
         else
           player.print({"msg-no-blueprint"})
@@ -706,7 +745,7 @@ local function on_gui_click(event)
           player.print({"msg-notanumber"})
         end
         guiSettings.displayCountWindow.destroy()
-        log("w "..serpent.line(guiSettings.displayCountWindow))
+
         guiSettings.displayCountWindowVisable = false
       end
     elseif event.element.name == "blueprintFixPositions" then
@@ -720,6 +759,23 @@ local function on_gui_click(event)
       else
         player.print("Click this button with a blueprint to fix the positions") --TODO localisation
       end
+    elseif event.element.name == "blueprintSettings" then
+      local elements = createSettingsWindow(player, guiSettings)
+      guiSettings.windows = elements
+    elseif event.element.name == "blueprintSettingsOk" then
+      if player.gui.center.blueprintSettingsWindow then
+        if guiSettings.windows then
+          global.guiSettings[player.index].overwrite = guiSettings.windows.overwrite.state
+          local newInt = tonumber(guiSettings.windows.displayCount.text) or 1
+          newInt = newInt > 0 and newInt or 1
+          global.guiSettings[player.index].displayCount = newInt
+        end
+        player.gui.center.blueprintSettingsWindow.destroy()
+      end
+    elseif event.element.name == "blueprintSettingsCancel" then
+      if player.gui.center.blueprintSettingsWindow then
+        player.gui.center.blueprintSettingsWindow.destroy()
+      end
     end
 
     if refreshWindow then
@@ -732,7 +788,7 @@ local function on_gui_click(event)
         end
       end
     end
-  end, event)
+  end, event_)
   if err then debugDump(err,true) end
 end
 
