@@ -204,20 +204,12 @@ function on_player_created(event)
   end
 end
 
-local function on_force_created(event)
-  init_force(event.force)
-end
-
-local function createBlueprintButtons(force)
-  for _, player in pairs(force.players) do
-    createBlueprintButton(player, global.guiSettings[player.index])
-  end
-end
-
 local function on_research_finished(event)
   if event.research ~= nil and event.research.name == "automated-construction" then
     global.unlocked[event.research.force.name] = true
-    createBlueprintButtons(event.research.force)
+    for _, player in pairs(event.research.force.players) do
+      createBlueprintButton(player, global.guiSettings[player.index])
+    end
   end
 end
 
@@ -225,7 +217,8 @@ script.on_init(on_init)
 script.on_load(on_load)
 script.on_configuration_changed(on_configuration_changed)
 script.on_event(defines.events.on_player_created, on_player_created)
-script.on_event(defines.events.on_force_created, on_force_created)
+script.on_event(defines.events.on_force_created, function(event) init_force(event.force) end)
+
 --script.on_event(defines.events.on_forces_merging, on_forces_merging)
 script.on_event(defines.events.on_research_finished, on_research_finished)
 
@@ -243,68 +236,23 @@ function sortBlueprint(blueprintA, blueprintB)
   end
 end
 
-function getLastPage(displayCount, blueprintCount)
-  local num =  math.floor((blueprintCount - 1) / displayCount ) + 1
-  if num == 0 then
-    return 1
-  else
-    return num
-  end
-end
-
 function cleanupName(name)
   return string.gsub(name:trim(), "[\\.?~!@#$%^&*(){}\"']", "")
 end
 
-function findBlueprintsInHotbar(player)
-  local blueprints = {}
-  if player ~= nil then
-    local hotbar = player.get_inventory(defines.inventory.player_quickbar)
-    if hotbar ~= nil then
-      local i = 1
-      while (i < 30) do
-        local itemStack
-        if pcall(function () itemStack = hotbar[i] end) then
-          if itemStack.valid_for_read and itemStack.type == "blueprint" then
-            table.insert(blueprints, itemStack)
-          end
-          i = i + 1
-        else
-          i = 100
+function findBlueprint(player, state)
+  local inventories = {player.get_inventory(defines.inventory.player_quickbar), player.get_inventory(defines.inventory.player_main)}
+  for _, inv in pairs(inventories) do
+    for _, itemStack in pairs(inv) do
+      if itemStack.valid_for_read and itemStack.type == "blueprint" then
+        local setup = itemStack.is_blueprint_setup()
+        if (state == "empty" and not setup) or
+          (state == "setup" and setup) or
+          (state == "whatever")
+        then
+          return itemStack
         end
       end
-    end
-  end
-  return blueprints
-end
-
-function findBlueprintInHotbar(player)
-  local blueprints = findBlueprintsInHotbar(player)
-  if blueprints ~= nil and blueprints[1] ~= nil then
-    return blueprints[1]
-  end
-end
-
-function findSetupBlueprintInHotbar(player)
-  local blueprints = findBlueprintsInHotbar(player)
-  if not blueprints then
-    return
-  end
-  for _, blueprint in pairs(blueprints) do
-    if blueprint.is_blueprint_setup() then
-      return blueprint
-    end
-  end
-end
-
-function findEmptyBlueprintInHotbar(player)
-  local blueprints = findBlueprintsInHotbar(player)
-  if not blueprints then
-    return
-  end
-  for _, blueprint in pairs(blueprints) do
-    if not blueprint.is_blueprint_setup() then
-      return blueprint
     end
   end
 end
@@ -369,22 +317,7 @@ function createBlueprintWindow(player, blueprints, guiSettings)
   guiSettings.window = window
 
   local buttons = window.add({type="frame", name="blueprintButtons", direction="horizontal", style="blueprint_thin_frame"})
-  local buttonFlow = buttons.add({type="flow", name="pageButtonFlow", direction="horizontal", style="blueprint_button_flow"})
 
-  if guiSettings.page <= 1 then
-    buttonFlow.add({type="button", name="blueprintPageBack", caption={"btn-blueprint-pageback"}, style="blueprint_disabled_button"})
-  else
-    buttonFlow.add({type="button", name="blueprintPageBack", caption={"btn-blueprint-pageback"}, style="blueprint_button_style"})
-  end
-
-  local lastPage = getLastPage(guiSettings.displayCount, #blueprints)
-
-  buttonFlow.add({type="button", name="blueprintDisplayCount", caption=guiSettings.page .. "/" .. lastPage, style="blueprint_button_style"})
-  if guiSettings.page >= lastPage then
-    buttonFlow.add({type="button", name="blueprintPageForward", caption={"btn-blueprint-pageforward"}, style="blueprint_disabled_button"})
-  else
-    buttonFlow.add({type="button", name="blueprintPageForward", caption={"btn-blueprint-pageforward"}, style="blueprint_button_style"})
-  end
   buttons.add({type="button", name="blueprintNew", caption={"btn-blueprint-new"}, style="blueprint_button_style"})
   buttons.add({type="button", name="blueprintFixPositions", caption={"btn-blueprint-fix"}, style="blueprint_button_style"})
   buttons.add({type="button", name="blueprintSettings", style="blueprint_settings_button"})
@@ -460,17 +393,6 @@ function createNewBlueprintWindow(gui, blueprintName)
   flow.add({type="button", name="blueprintNewCancel", caption={"btn-cancel"}})
   flow.add({type="button", name="blueprintNewImport", caption={"btn-import"}})
   return frame
-end
-
-function createDisplayCountWindow(gui, displayCount)
-  if not gui then
-    return
-  end
-  local window = gui.add({type="frame", name="blueprintDisplayCountWindow", caption={"window-blueprint-displaycount"}, direction="vertical" }) --style="fatcontroller_thin_frame"})
-  window.add({type="textfield", name="blueprintDisplayCountText", text=displayCount .. ""})
-  window.blueprintDisplayCountText.text = displayCount .. ""
-  window.add({type="button", name="blueprintDisplayCountOK", caption={"btn-ok"}})
-  return window
 end
 
 --write to blueprint
@@ -554,25 +476,6 @@ local function on_gui_click(event_)
           remote.call("YARM", "show_expando", player.index)
         end
       end
-    elseif event.element.name == "blueprintPageBack" then
-      if guiSettings.page > 1 then
-        guiSettings.page = guiSettings.page - 1
-        refreshWindow = true
-      end
-    elseif event.element.name == "blueprintPageForward" then
-      local lastPage = getLastPage(guiSettings.displayCount, #global.blueprints[player.force.name])
-      if guiSettings.page < lastPage then
-        guiSettings.page = guiSettings.page + 1
-        refreshWindow = true
-      end
-    elseif event.element.name == "blueprintDisplayCount" then
-      if not guiSettings.displayCountWindowVisable then
-        guiSettings.displayCountWindow = createDisplayCountWindow(game.players[event.element.player_index].gui.center, guiSettings.displayCount)
-        guiSettings.displayCountWindowVisable = true
-      else
-        guiSettings.displayCountWindow.destroy()
-        guiSettings.displayCountWindowVisable = false
-      end
     elseif event.element.name == "blueprintNew" then
       if not guiSettings.newWindowVisable then
         local num = (#global.blueprints[player.force.name] + 1) .. ""
@@ -621,10 +524,10 @@ local function on_gui_click(event_)
       if not blueprintIndex then
         return
       end
-      local blueprint = findEmptyBlueprintInHotbar(player)
+      local blueprint = findBlueprint(player, "empty")
 
       if not blueprint and guiSettings.overwrite then
-        blueprint = findBlueprintInHotbar(player)
+        blueprint = findBlueprint(player, "setup")
       end
 
       local blueprintData = global.blueprints[player.force.name][blueprintIndex]
@@ -673,7 +576,7 @@ local function on_gui_click(event_)
       local blueprintData
       if importString == nil or importString == "" then
         -- read blueprint in hotbar
-        local blueprint = findSetupBlueprintInHotbar(player)
+        local blueprint = findBlueprint(player, "setup")
         if blueprint == nil then
           player.print({"msg-no-blueprint"})
           return
@@ -728,25 +631,6 @@ local function on_gui_click(event_)
             refreshWindows = true
           end
         end
-      end
-    elseif event.element.name == "blueprintDisplayCountOK" then
-      if guiSettings.displayCountWindowVisable then
-        local newInt = tonumber(guiSettings.displayCountWindow.blueprintDisplayCountText.text)
-        if newInt then
-          if newInt < 1 then
-            newInt = 1
-          elseif newInt > 50 then
-            newInt = 50
-          end
-          guiSettings.displayCount = newInt
-          guiSettings.page = 1
-          refreshWindow = true
-        else
-          player.print({"msg-notanumber"})
-        end
-        guiSettings.displayCountWindow.destroy()
-
-        guiSettings.displayCountWindowVisable = false
       end
     elseif event.element.name == "blueprintFixPositions" then
       local cursor_stack = player.cursor_stack
