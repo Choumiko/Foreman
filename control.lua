@@ -243,7 +243,8 @@ end
 function findBlueprint(player, state)
   local inventories = {player.get_inventory(defines.inventory.player_quickbar), player.get_inventory(defines.inventory.player_main)}
   for _, inv in pairs(inventories) do
-    for _, itemStack in pairs(inv) do
+    for i=1,#inv do
+      local itemStack = inv[i]
       if itemStack.valid_for_read and itemStack.type == "blueprint" then
         local setup = itemStack.is_blueprint_setup()
         if (state == "empty" and not setup) or
@@ -341,12 +342,10 @@ function createBlueprintWindow(player, blueprints, guiSettings)
     direction="vertical",
     style="blueprint_thin_flow"
   }
-  for j=0,1 do
-    for i,blueprintData in pairs(blueprints) do
-      createBlueprintFrame(flow, i+j*5, blueprintData)
-    end
+  for i,blueprintData in pairs(blueprints) do
+    createBlueprintFrame(flow, i, blueprintData)
   end
-  createBlueprintFrame(flow, 11, blueprints[1])
+
   return window
 end
 
@@ -499,7 +498,7 @@ local function on_gui_click(event_)
           end
           refreshWindows = true
         else
-          guiSettings.newWindow = createNewBlueprintWindow(game.players[event.element.player_index].gui.center, "_New " .. num)
+          guiSettings.newWindow = createNewBlueprintWindow(game.players[event.element.player_index].gui.center, "new_" .. num)
           guiSettings.newWindowVisable = true
         end
       else
