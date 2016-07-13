@@ -15,41 +15,63 @@ data.raw["gui-style"].default["blueprint_button_style"] =
     }
   }
 
-data.raw["gui-style"].default["blueprint_delete_button"] =
+data.raw["gui-style"].default["blueprint_sprite_button"] =
   {
     type = "button_style",
     parent = "button_style",
     width = 32,
     height = 32,
-    font = "auto-trash-small-font",
-    sprite = {
-      filename = "__core__/graphics/remove-icon.png",
-      priority = "extra-high-no-scale",
-      width = 64,
-      height = 64,
-      scale = 0.5,
-    },
+    top_padding = 1,
+    right_padding = 5,
+    bottom_padding = 1,
+    left_padding = 5,
+    left_click_sound =
+    {
+      {
+        filename = "__core__/sound/gui-click.ogg",
+        volume = 1
+      }
+    }
   }
 
-data.raw["gui-style"].default["foreman_rename_button"] =
+data:extend({
   {
-    type = "button_style",
-    parent = "blueprint_button_style",
+    type="sprite",
+    name="rename_sprite",
+    filename = "__core__/graphics/rename-small.png",
+    priority = "extra-high-no-scale",
+    width = 16,
+    height = 16,
+    scale = 2,
+  },
+  {
+    type="sprite",
+    name="delete_sprite",
+    filename = "__core__/graphics/remove-icon.png",
+    priority = "extra-high-no-scale",
+    width = 64,
+    height = 64,
+    scale = 0.5,
+  },
+  {
+    type="sprite",
+    name="settings_sprite",
+    filename = "__core__/graphics/side-menu-icons.png",
+    priority = "extra-high-no-scale",
+    width = 64,
+    height = 64,
+    x = 0,
+  },
+  {
+    type="sprite",
+    name="add_sprite",
+    filename = "__core__/graphics/add-icon.png",
+    priority = "extra-high-no-scale",
     width = 32,
     height = 32,
-    top_padding = 0,
-    right_padding = 0,
-    bottom_padding = 0,
-    left_padding = 0,
-    font = "auto-trash-small-font",
-    sprite = {
-      filename = "__core__/graphics/rename-small.png",
-      priority = "extra-high-no-scale",
-      width = 16,
-      height = 16,
-      scale = 2,
-    },
-  }
+  },
+
+})
 
 data.raw["gui-style"].default["blueprint_thin_flow"] =
   {
@@ -95,89 +117,6 @@ data.raw["gui-style"].default["blueprint_info_button_flow"] =
     type = "flow_style",
     parent="blueprint_button_flow",
     top_padding  = 4,
-  }
-
-data.raw["gui-style"].default["blueprint_disabled_button"] =
-  {
-    type = "button_style",
-    parent = "blueprint_button_style",
-
-    default_font_color={r=0.34, g=0.34, b=0.34},
-
-    hovered_font_color={r=0.34, g=0.34, b=0.38},
-    hovered_graphical_set =
-    {
-      type = "composition",
-      filename = "__core__/graphics/gui.png",
-      corner_size = {3, 3},
-      position = {0, 0}
-    },
-
-    clicked_font_color={r=0.34, g=0.34, b=0.38},
-    clicked_graphical_set =
-    {
-      type = "composition",
-      filename = "__core__/graphics/gui.png",
-      corner_size = {3, 3},
-      position = {0, 0}
-    },
-  }
-
-data.raw["gui-style"].default["blueprint_settings_button"] =
-  {
-    type = "button_style",
-    parent = "button_style",
-    width = 33,
-    height = 33,
-    default_graphical_set =
-    {
-      type = "monolith",
-      monolith_image =
-      {
-        filename = "__core__/graphics/side-menu-icons.png",
-        priority = "extra-high-no-scale",
-        width = 64,
-        height = 64,
-        x = 0,
-      },
-      stretch_monolith_image_to_size = false
-    },
-
-    hovered_graphical_set =
-    {
-      type = "monolith",
-      monolith_image =
-      {
-        filename = "__core__/graphics/side-menu-icons.png",
-        priority = "extra-high-no-scale",
-        width = 64,
-        height = 64,
-        x = 64,
-      },
-      stretch_monolith_image_to_size = false
-    },
-
-    clicked_graphical_set =
-    {
-      type = "monolith",
-      monolith_image =
-      {
-        filename = "__core__/graphics/side-menu-icons.png",
-        priority = "extra-high-no-scale",
-        width = 64,
-        height = 64,
-        x = 64,
-      },
-      stretch_monolith_image_to_size = false
-    },
-    left_click_sound =
-    {
-      {
-        filename = "__core__/sound/gui-click.ogg",
-        volume = 1
-      }
-    },
-
   }
 
 data.raw["gui-style"].default["blueprint_selected_button"] =

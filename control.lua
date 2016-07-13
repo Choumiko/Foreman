@@ -4,6 +4,7 @@ require 'stdlib.area.position'
 require 'stdlib.game'
 
 BlueprintString = require 'blueprintstring.blueprintstring'
+serpent = require 'blueprintstring.serpent0272'
 MOD_NAME = "Foreman"
 
 function debugLog(message, force)
@@ -127,7 +128,7 @@ end
 function saveVar(var, name,sparse)
   var = var or global
   local n = name or "foreman"
-  game.write_file("blueprint/"..n..".lua", serpent.block(var, {name="global", sparse=sparse, comment=false}))
+  game.write_file(n..".lua", serpent.block(var, {name="global", sparse=sparse, comment=false}))
 end
 
 -- run once
@@ -291,10 +292,10 @@ function createBlueprintFrame(gui, index, blueprintData)
   end
   local frame = gui.add({type="frame", name=index .. "_blueprintInfoFrame", direction="horizontal", style="blueprint_thin_frame"})
   local buttonFlow = frame.add({type="flow", name=index .. "_InfoButtonFlow", direction="horizontal", style="blueprint_button_flow"})
-  buttonFlow.add({type="button", name=index .. "_blueprintInfoDelete", caption={"btn-blueprint-delete"}, style="blueprint_button_style"})
+  buttonFlow.add({type="sprite-button", name=index .. "_blueprintInfoDelete", sprite="delete_sprite", style="blueprint_sprite_button"})
   buttonFlow.add({type="button", name=index .. "_blueprintInfoLoad", caption={"btn-blueprint-load"}, style="blueprint_button_style"})
   buttonFlow.add({type="button", name=index .. "_blueprintInfoExport", caption={"btn-blueprint-export"}, style="blueprint_button_style"})
-  buttonFlow.add({type="button", name=index .. "_blueprintInfoRename", caption={"btn-blueprint-rename"}, style="blueprint_button_style"})
+  buttonFlow.add({type="sprite-button", name=index .. "_blueprintInfoRename", sprite="rename_sprite", caption="n", style="blueprint_sprite_button"})
   frame.add({type="label", name=index .. "_blueprintInfoName", caption=blueprintData.name, style="blueprint_label_style"})
 end
 
@@ -319,11 +320,15 @@ function createBlueprintWindow(player, blueprints, guiSettings)
 
   local buttons = window.add({type="frame", name="blueprintButtons", direction="horizontal", style="blueprint_thin_frame"})
 
-  buttons.add({type="button", name="blueprintNew", caption={"btn-blueprint-new"}, style="blueprint_button_style"})
-  buttons.add({type="button", name="blueprintFixPositions", caption={"btn-blueprint-fix"}, style="blueprint_button_style"})
-  --buttons.add({type="button", name="", caption="E", style="blueprint_button_style"})
-  --buttons.add({type="button", caption="L", style="blueprint_button_style"})
-  buttons.add({type="button", name="blueprintSettings", style="blueprint_settings_button"})
+  buttons.add({type="sprite-button", name="blueprintNew", tooltip={"tooltip-blueprint-import"}, sprite="add_sprite", style="blueprint_sprite_button"})
+  
+  buttons.add{type="sprite-button", name="blueprintNewBook", tooltip={"tooltip-blueprint-import-book"}, style="blueprint_sprite_button", sprite="item/blueprint-book"}
+
+  buttons.add({type="sprite-button", name="blueprintFixPositions", tooltip={"tooltip-blueprint-fix"}, style="blueprint_sprite_button", sprite="item/repair-pack"})
+  
+  buttons.add({type="button", name="blueprintExportAll", tooltip={"tooltip-blueprint-export-all"}, caption="E", style="blueprint_button_style"})
+  buttons.add({type="button", name="blueprintImportAll", tooltip={"tooltip-blueprint-import-all"}, caption="L", style="blueprint_button_style"})
+  buttons.add({type="sprite-button", name="blueprintSettings", tooltip={"window-blueprint-settings"}, sprite="settings_sprite", style="blueprint_sprite_button"})
 
   local frame = window.add({type="frame", name="blueprintFrame", direction="vertical"})
   frame.style.left_padding = 0
@@ -673,14 +678,84 @@ on_gui_click = {
       end
     end,
 
+    blueprintExportAll = function(player)
+      local blueprints = {}
+      for i, blueprint in pairs(global.blueprints[player.force.name]) do
+        blueprints[i] = blueprint
+      end
+      if #blueprints > 0 then
+        local stringOutput = serpent.dump(blueprints)
+        if not stringOutput then
+          player.print({"msg-problem-blueprint"})
+          return
+        end
+        local folder = player.name ~= "" and player.name:gsub("[/\\:*?\"<>|]", "_") .."/"
+        local filename = "export" .. #blueprints
+        filename = "blueprint-string/" .. folder .. filename .. ".lua"
+        game.write_file(filename , stringOutput)
+        Game.print_force(player.force, {"", player.name, " ", {"msg-export-blueprint"}}) --TODO localisation
+        Game.print_force(player.force, "File: script-output/".. folder .. filename) --TODO localisation
+      end
+    end,
+
+    blueprintImportAll = function(player, guiSettings)
+      local frame = player.gui.center.add({type="frame", name="blueprintImportAllWindow", direction="vertical", caption={"window-blueprint-import-all"}})
+      local text = frame.add({type="textfield", name="blueprintImportAllText"})
+
+      local flow = frame.add({type="flow", name="blueprintNewButtonFlow", direction="horizontal"})
+      flow.add({type="button", name="blueprintImportAllCancel", caption={"btn-cancel"}})
+      flow.add({type="button", name="blueprintImportAllOk", caption={"btn-import"}})
+
+      guiSettings.import = {window = frame, textfield = text}
+
+      return true
+    end,
+
+    blueprintImportAllOk = function(player, guiSettings)
+      if guiSettings.import and guiSettings.import.window.valid then
+        local importString = string.trim(guiSettings.import.textfield.text)
+        local status, result = serpent.load(importString)
+        if status then
+          local forceName = player.force.name
+          local names = {}
+          for _, bp in pairs(global.blueprints[forceName]) do
+            names[bp.name] = bp
+          end
+          log(serpent.block(names,{comment=false}))
+          for _, blueprint in pairs(result) do
+            log(serpent.block(blueprint,{comment=false}))
+            log(serpent.block(names[blueprint.name],{comment=false}))
+            if names[blueprint.name] and blueprint.data == names[blueprint.name].data then
+              Game.print_force(forceName, {"msg-blueprint-exists", blueprint.name})
+            else
+              table.insert(global.blueprints[forceName], blueprint)            
+            end
+          end
+          guiSettings.import.window.destroy()
+          guiSettings.import = nil
+          return true
+        else
+          Game.print_force(player.force, {"msg-import-blueprint-fail"})
+          Game.print_force(player.force, result)
+        end
+      end
+    end,
+
+    blueprintImportAllCancel = function(_, guiSettings)
+      if guiSettings.import and guiSettings.import.window.valid then
+        guiSettings.import.window.destroy()
+        guiSettings.import = nil
+      end
+    end,
+
     on_gui_click = function(event_)
       local _, err = pcall(function(event)
         local player = game.players[event.element.player_index]
         local guiSettings = global.guiSettings[event.element.player_index]
         local data = split(event.element.name,"_") or {}
         local blueprintIndex = tonumber(data[1])
+        --log(serpent.line(data))
         local buttonName = data[2] or event.element.name
-        log(serpent.line({b=buttonName, id=blueprintIndex},{comment=false}))
         if not player then
           Game.print_all("Something went horribly wrong")
           return
