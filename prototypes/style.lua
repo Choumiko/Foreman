@@ -78,6 +78,14 @@ data:extend({
   },
   {
     type="sprite",
+    name="add_book_sprite",
+    filename = "__Foreman__/graphics/add_book.png",
+    priority = "extra-high-no-scale",
+    width = 32,
+    height = 32,
+  },
+  {
+    type="sprite",
     name="load_book_sprite",
     filename = "__Foreman__/graphics/load_book.png",
     priority = "extra-high-no-scale",
@@ -92,8 +100,24 @@ data:extend({
     width = 64,
     height = 64,
   },
+  {
+    type="sprite",
+    name="main_button_sprite",
+    filename = "__Foreman__/graphics/mainbutton.png",
+    priority = "extra-high-no-scale",
+    width = 128,
+    height = 128,
+  },
 
 })
+
+data.raw["gui-style"].default["blueprint_main_button"] =
+  {
+    type = "button_style",
+    parent = "blueprint_sprite_button",
+    width = 33,
+    height = 33,
+  }
 
 data.raw["gui-style"].default["blueprint_thin_flow"] =
   {

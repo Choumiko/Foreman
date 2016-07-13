@@ -17,6 +17,7 @@ end
 
 local function init_global()
   global.blueprints = global.blueprints or {}
+  global.books = global.books or {}
   global.guiSettings = global.guiSettings or {}
   global.unlocked = global.unlocked or {}
   global.bpVersion = global.bpVersion or "0.1.2"
@@ -30,12 +31,22 @@ local function init_player(player)
   end
 end
 
-function createBlueprintButton(player, guiSettings)
+function createBlueprintButton(player)
   if player.valid then
     local topGui = player.gui.top
-    if not topGui.blueprintTools  then
-      topGui.add({type="button", name="blueprintTools", caption = {"btn-blueprint-main"}, style="blueprint_button_style"})
-      guiSettings.foremanVisable = true
+    if not topGui.foremanFlow then
+      topGui.add{
+        type = "flow",
+        name = "foremanFlow",
+        direction = "horizontal",
+        style = "blueprint_thin_flow"
+      }
+      if not topGui.foremanFlow.blueprintTools then
+        topGui.foremanFlow.add({type="sprite-button", name="blueprintTools", sprite="main_button_sprite", style="blueprint_main_button"})
+      end
+      if topGui.blueprintTools and topGui.blueprintTools.valid then
+        topGui.blueprintTools.destroy()
+      end
     end
   end
 end
@@ -55,8 +66,10 @@ local function init_force(force)
   if not global.unlocked then
     init_global()
   end
-  global.unlocked[force.name] = force.technologies["automated-construction"].researched
-  global.blueprints[force.name] = global.blueprints[force.name] or {}
+  local name = force.name
+  global.unlocked[name] = force.technologies["automated-construction"].researched
+  global.blueprints[name] = global.blueprints[name] or {}
+  global.books[name] = global.books[name] or {}
 end
 
 local function init_forces()
@@ -74,11 +87,23 @@ local function on_load()
 -- set metatables, register conditional event handlers, local references to global
 end
 
-saveBlueprint = function(player, blueprintIndex, show, folder)
-  local blueprintData = global.blueprints[player.force.name][blueprintIndex]
-  --local stringOutput = convertBlueprintDataToString(blueprintData)
-  local stringOutput = blueprintData.data
-  if not stringOutput then
+saveToFile = function(player, blueprintIndex, book)
+  if not blueprintIndex then
+    player.print({"msg-problem-blueprint"})
+    return
+  end
+  local blueprintData, stringOutput, extension
+  if book then
+    blueprintData = global.books[player.force.name][blueprintIndex]
+    stringOutput = serpent.block(blueprintData, {comment=false})
+    extension = ".book"
+  else
+    blueprintData = global.blueprints[player.force.name][blueprintIndex]
+    stringOutput = blueprintData.data
+    extension = ".blueprint"
+  end
+
+  if not stringOutput or not blueprintData then
     player.print({"msg-problem-blueprint"})
     return
   end
@@ -86,13 +111,12 @@ saveBlueprint = function(player, blueprintIndex, show, folder)
   if filename == nil or filename == "" then
     filename = "export"
   end
-  folder = folder or ""
-  filename = "blueprint-string/" .. folder .. filename .. ".blueprint"
+  local folder = player.name ~= "" and player.name:gsub("[/\\:*?\"<>|]", "_") .."/"
+  folder = (folder and folder ~= "/") and folder or ""
+  filename = "blueprint-string/" .. folder .. filename .. extension
   game.write_file(filename , stringOutput)
-  if show then
-    Game.print_force(player.force, {"", player.name, " ", {"msg-export-blueprint"}}) --TODO localisation
-    Game.print_force(player.force, "File: script-output/".. folder .. filename) --TODO localisation
-  end
+  Game.print_force(player.force, {"", player.name, " ", {"msg-export-blueprint"}})
+  Game.print_force(player.force, "File: script-output/".. folder .. filename)
 end
 
 function contains_entities(bp, entities)
@@ -188,6 +212,11 @@ local function on_configuration_changed(changes)
       end
       if oldVersion < "0.1.26" then
         init_players()
+      end
+      if oldVersion < "0.2.1" then
+        init_global()
+        init_forces()
+        init_players(true)
       end
       Game.print_all("Updated Foreman from ".. oldVersion .. " to " .. newVersion)
     end
@@ -286,33 +315,44 @@ function createSettingsWindow(player, guiSettings)
   end
 end
 
-function createBlueprintFrame(gui, index, blueprintData)
+function createBlueprintFrameBook(gui, index, caption, countBP)
   if not gui then
     return
   end
-  local frame = gui.add({type="frame", name=index .. "_blueprintInfoFrame", direction="horizontal", style="blueprint_thin_frame"})
-  local buttonFlow = frame.add({type="flow", name=index .. "_InfoButtonFlow", direction="horizontal", style="blueprint_button_flow"})
-  
-  buttonFlow.add({type="sprite-button", name=index .. "_blueprintInfoDelete", tooltip={"tooltip-blueprint-delete"}, sprite="delete_sprite", style="blueprint_sprite_button"})
-  buttonFlow.add({type="sprite-button", name=index .. "_blueprintInfoLoad", tooltip={"tooltip-blueprint-load"}, sprite="load_sprite", style="blueprint_sprite_button"})
-  buttonFlow.add({type="sprite-button", name=index .. "_blueprintInfoExport", tooltip={"tooltip-blueprint-export"}, sprite="save_sprite", style="blueprint_sprite_button"})
-  buttonFlow.add({type="sprite-button", name=index .. "_blueprintInfoRename", tooltip={"tooltip-blueprint-rename"}, sprite="rename_sprite", style="blueprint_sprite_button"})
-  
-  frame.add({type="label", name=index .. "_blueprintInfoName", caption=blueprintData.name, style="blueprint_label_style"})
+  local frame = gui.add({type="frame", direction="horizontal", style="blueprint_thin_frame"})
+  local buttonFlow = frame.add({type="flow", direction="horizontal", style="blueprint_button_flow"})
+
+  buttonFlow.add({type="sprite-button", name=index .. "_blueprintInfoBookDelete", tooltip={"tooltip-blueprint-delete"}, sprite="delete_sprite", style="blueprint_sprite_button"})
+  buttonFlow.add({type="sprite-button", name=index .. "_blueprintInfoBookLoad", tooltip={"tooltip-blueprint-load"}, sprite="load_book_sprite", style="blueprint_sprite_button"})
+  buttonFlow.add({type="sprite-button", name=index .. "_blueprintInfoBookExport", tooltip={"tooltip-blueprint-export"}, sprite="save_sprite", style="blueprint_sprite_button"})
+  buttonFlow.add({type="sprite-button", name=index .. "_blueprintInfoBookRename", tooltip={"tooltip-blueprint-rename"}, sprite="rename_sprite", style="blueprint_sprite_button"})
+  frame.add{type="label", caption=caption, style="blueprint_label_style", tooltip = {"", countBP, " ", {"item-name.blueprint"}}}
 end
 
-function createBlueprintWindow(player, blueprints, guiSettings)
+function createBlueprintFrame(gui, index, caption)
+  if not gui then
+    return
+  end
+  local frame = gui.add({type="frame", direction="horizontal", style="blueprint_thin_frame"})
+  local buttonFlow = frame.add({type="flow", direction="horizontal", style="blueprint_button_flow"})
+
+  buttonFlow.add({type="sprite-button", name=index .. "_blueprintInfoDelete", tooltip={"tooltip-blueprint-delete"}, sprite="delete_sprite", style="blueprint_sprite_button"})
+  buttonFlow.add({type="sprite-button", name=index .. "_blueprintInfoLoad",   tooltip={"tooltip-blueprint-load"},   sprite="load_sprite",   style="blueprint_sprite_button"})
+  buttonFlow.add({type="sprite-button", name=index .. "_blueprintInfoExport", tooltip={"tooltip-blueprint-export"}, sprite="save_sprite",   style="blueprint_sprite_button"})
+  buttonFlow.add({type="sprite-button", name=index .. "_blueprintInfoRename", tooltip={"tooltip-blueprint-rename"}, sprite="rename_sprite", style="blueprint_sprite_button"})
+  frame.add({type="label", caption=caption, style="blueprint_label_style"})
+end
+
+function createBlueprintWindow(player, guiSettings)
   if not player or not guiSettings then
     return
   end
-  debugLog("create window")
 
   local gui = player.gui.left
   if gui.blueprintWindow ~= nil then
     gui.blueprintWindow.destroy()
   end
 
-  guiSettings.windowVisable = true
   if remote.interfaces.YARM then
     guiSettings.YARM_old_expando = remote.call("YARM", "hide_expando", player.index)
   end
@@ -323,11 +363,11 @@ function createBlueprintWindow(player, blueprints, guiSettings)
   local buttons = window.add({type="frame", name="blueprintButtons", direction="horizontal", style="blueprint_thin_frame"})
 
   buttons.add({type="sprite-button", name="blueprintNew", tooltip={"tooltip-blueprint-import"}, sprite="add_sprite", style="blueprint_sprite_button"})
-  
-  buttons.add{type="sprite-button", name="blueprintNewBook", tooltip={"tooltip-blueprint-import-book"}, style="blueprint_sprite_button", sprite="load_book_sprite"}
+
+  buttons.add{type="sprite-button", name="blueprintNewBook", tooltip={"tooltip-blueprint-import-book"}, style="blueprint_sprite_button", sprite="add_book_sprite"}
 
   buttons.add({type="sprite-button", name="blueprintFixPositions", tooltip={"tooltip-blueprint-fix"}, style="blueprint_sprite_button", sprite="item/repair-pack"})
-  
+
   buttons.add({type="button", name="blueprintExportAll", tooltip={"tooltip-blueprint-export-all"}, caption="E", style="blueprint_button_style"})
   buttons.add({type="button", name="blueprintImportAll", tooltip={"tooltip-blueprint-import-all"}, caption="L", style="blueprint_button_style"})
   buttons.add({type="sprite-button", name="blueprintSettings", tooltip={"window-blueprint-settings"}, sprite="settings_sprite", style="blueprint_sprite_button"})
@@ -351,14 +391,20 @@ function createBlueprintWindow(player, blueprints, guiSettings)
     direction="vertical",
     style="blueprint_thin_flow"
   }
-  for i,blueprintData in pairs(blueprints) do
-    createBlueprintFrame(flow, i, blueprintData)
-  end
 
+  local books = global.books[player.force.name]
+  for i, bookData in pairs(books) do
+    createBlueprintFrameBook(flow, i, bookData.name, #bookData.blueprints)
+  end
+  local blueprints = global.blueprints[player.force.name]
+  for i,blueprintData in pairs(blueprints) do
+    createBlueprintFrame(flow, i, blueprintData.name)
+  end
+  guiSettings.windowVisable = true
   return window
 end
 
-function createRenameWindow(gui, index, oldName)
+function createRenameWindow(gui, index, oldName, book)
   if not gui then
     return
   end
@@ -372,7 +418,11 @@ function createRenameWindow(gui, index, oldName)
 
   local flow = frame.add({type="flow", name="blueprintRenameFlow", direction="horizontal"})
   flow.add({type="button", name="blueprintRenameCancel", caption={"btn-cancel"}})
-  flow.add({type="button", name=index .. "_blueprintRenameOK" , caption={"btn-ok"}})
+  if not book then
+    flow.add({type="button", name=index .. "_blueprintRenameOk" , caption={"btn-ok"}})
+  else
+    flow.add({type="button", name=index .. "_blueprintRenameBookOk" , caption={"btn-ok"}})
+  end
 
   return frame
 end
@@ -402,35 +452,37 @@ end
 
 --write to blueprint
 function setBlueprintData(force, blueprintStack, blueprintData)
-  if not blueprintStack then
-    return false
-  end
-  local data = BlueprintString.fromString(blueprintData.data)
-  --remove unresearched/invalid recipes
-  local entities = util.table.deepcopy(data.entities)
-  local tiles = data.tiles
+  return pcall(function()
+    if not blueprintStack or not blueprintStack.valid_for_read or blueprintStack.type ~= "blueprint" then
+      return false
+    end
+    local data = BlueprintString.fromString(blueprintData.data)
+    --remove unresearched/invalid recipes
+    local entities = util.table.deepcopy(data.entities)
+    local tiles = data.tiles
 
-  for _, entity in pairs(entities) do
-    if entity.recipe then
-      --entity.recipe = rename_recipes[entity.recipe] or entity.recipe
-      if not force.recipes[entity.recipe] or not force.recipes[entity.recipe].enabled then
-        entity.recipe = nil
+    for _, entity in pairs(entities) do
+      if entity.recipe then
+        --entity.recipe = rename_recipes[entity.recipe] or entity.recipe
+        if not force.recipes[entity.recipe] or not force.recipes[entity.recipe].enabled then
+          entity.recipe = nil
+        end
       end
     end
-  end
-  local name = cleanupName(blueprintData.name) or "new_" .. (#global.blueprints[force.name] + 1)
-  blueprintStack.label = name
-  blueprintStack.set_blueprint_entities(entities)
-  blueprintStack.set_blueprint_tiles(tiles)
+    local name = cleanupName(blueprintData.name) or "new_" .. (#global.blueprints[force.name] + 1)
+    blueprintStack.label = name
+    blueprintStack.set_blueprint_entities(entities)
+    blueprintStack.set_blueprint_tiles(tiles)
 
-  local newTable = {}
-  for i = 0, #data.icons do
-    if data.icons[i] then
-      table.insert(newTable, data.icons[i])
+    local newTable = {}
+    for i = 0, #data.icons do
+      if data.icons[i] then
+        table.insert(newTable, data.icons[i])
+      end
     end
-  end
-  blueprintStack.blueprint_icons = newTable
-  return true
+    blueprintStack.blueprint_icons = newTable
+    return true
+  end)
 end
 
 function getBlueprintData(blueprintStack)
@@ -458,15 +510,208 @@ function debugDump(var, force)
   end
 end
 
+isValidSlot = function(slot, state)
+  if not slot.valid_for_read then return false end
+
+  if state == "empty" then
+    return not slot.is_blueprint_setup()
+  elseif state == "setup" then
+    return slot.is_blueprint_setup()
+  end
+  return true
+end
+
+isDuplicate = function(player, data)
+  for _, bp in pairs(global.blueprints[player.force.name]) do
+    if bp.data == data then
+      return bp.name
+    end
+  end
+  return false
+end
+
+addBlueprintToTable = function(player, name, blueprintData)
+  blueprintData.name = nil
+  local data = BlueprintString.toString(blueprintData)
+  for k,_ in pairs(blueprintData) do
+    log(k)
+  end
+  log("")
+  local duplicate = isDuplicate(player, data)
+  if not duplicate then
+    name = cleanupName(name) or "new_" .. #global.blueprints[player.force.name]+1
+    table.insert(global.blueprints[player.force.name], {data = data, name = name})
+    table.sort(global.blueprints[player.force.name], sortBlueprint)
+    Game.print_force(player.force, {"", player.name, ": ",{"msg-blueprint-imported"}}) --TODO localisation
+    Game.print_force(player.force, "Name: " .. blueprintData.name) --TODO localisation
+    return true
+  else
+    player.print({"msg-blueprint-exists", duplicate})
+    return false
+  end
+end
+
 on_gui_click = {
 
     blueprintTools = function(player, guiSettings)
       if player.gui.left.blueprintWindow == nil then
-        createBlueprintWindow(player, global.blueprints[player.force.name], global.guiSettings[player.index])
+        createBlueprintWindow(player, global.guiSettings[player.index])
       else
         player.gui.left.blueprintWindow.destroy()
         if remote.interfaces.YARM and guiSettings.YARM_old_expando then
           remote.call("YARM", "show_expando", player.index)
+        end
+      end
+    end,
+
+    blueprintNewBook = function(player)
+      local cursor_stack = player.cursor_stack
+      if cursor_stack and cursor_stack.valid_for_read and cursor_stack.type == "blueprint-book" then
+        local blueprints = {}
+
+        local active = cursor_stack.get_inventory(defines.inventory.item_active)[1]
+        local main = cursor_stack.get_inventory(defines.inventory.item_main)
+        local name
+        local numBooks = #global.books[player.force.name]
+        numBooks = numBooks < 10 and "0" .. numBooks or numBooks
+        local bookName = cursor_stack.label or "Book_" .. numBooks
+        local num = 0
+        if isValidSlot(active, "setup") then
+          name = active.label and active.label or bookName .. "_" .. 0
+          table.insert(blueprints, {name=cleanupName(name), data=BlueprintString.toString(getBlueprintData(active))})
+          num = num + 1
+        end
+        local suffix
+        for i=1, #main do
+          if isValidSlot(main[i], "setup") then
+            suffix = num < 10 and "0"..num or num
+            name = main[i].label or bookName .. "_" .. suffix
+            num = num + 1
+            table.insert(blueprints, {name=cleanupName(name), data=BlueprintString.toString(getBlueprintData(main[i]))})
+          end
+        end
+        if num > 0 then
+          table.insert(global.books[player.force.name], {blueprints = blueprints, name = bookName})
+          table.sort(global.books[player.force.name], sortBlueprint)
+          Game.print_force(player.force, {"", player.name, ": ",{"msg-blueprint-imported"}})
+          Game.print_force(player.force, "Name: " .. bookName) --TODO localisation
+        end
+        return true
+      else
+        player.print("Click this button with a blueprint book to import it")
+      end
+    end,
+
+    blueprintInfoBookDelete = function(player, _, blueprintIndex)
+      if blueprintIndex then
+        Game.print_force(player.force, player.name.." deleted "..global.books[player.force.name][blueprintIndex].name) --TODO localisation
+        table.remove(global.books[player.force.name], blueprintIndex)
+        return true
+      end
+    end,
+
+    blueprintInfoBookLoad = function(player, _, blueprintIndex)
+      local cursor_stack = player.cursor_stack
+      local book = global.books[player.force.name][blueprintIndex]
+      if book and cursor_stack and cursor_stack.valid_for_read and cursor_stack.type == "blueprint-book" then
+        local count = #book.blueprints
+        local active = cursor_stack.get_inventory(defines.inventory.item_active)
+        local main = cursor_stack.get_inventory(defines.inventory.item_main)
+        local countBookBlueprints = main.get_item_count("blueprint") + active.get_item_count("blueprint")
+        active = active[1]
+
+        if countBookBlueprints >= count then
+          local empty = {}
+          local setup = {}
+          local emptyCount = 0
+          if isValidSlot(active,'empty') then
+            table.insert(empty, active)
+            emptyCount = emptyCount + 1
+          end
+          if isValidSlot(active, "setup") then
+            table.insert(setup, active)
+          end
+          for i=1, #main do
+            if isValidSlot(main[i],'empty') then
+              table.insert(empty, main[i])
+              emptyCount = emptyCount + 1
+            end
+            if isValidSlot(main[i], "setup") then
+              table.insert(setup, main[i])
+            end
+          end
+          local duplicateCount = 0
+          local duplicates = {}
+          local needed = count - emptyCount
+          for _, blueprintOld in pairs(setup) do
+            local blueprintString = BlueprintString.toString(getBlueprintData(blueprintOld))
+            for n, blueprintNew in pairs(book.blueprints) do
+              if blueprintString == blueprintNew.data then
+                duplicates[n] = true
+                duplicateCount = duplicateCount + 1
+              end
+            end
+          end
+          needed = needed - duplicateCount
+          local writeIndex = 1
+          if needed < 1 then
+            for n, newBP in pairs(book.blueprints) do
+              if not duplicates[n] and newBP then
+                local status, err = pcall(function() setBlueprintData(player.force, empty[writeIndex], newBP) end )
+                if status then
+                  player.print({"msg-blueprint-loaded", "'" .. newBP.name .. "'"})
+                  writeIndex = writeIndex + 1
+                else
+                  player.print({"msg-blueprint-notloaded"})
+                  player.print(err)
+                end
+              end
+              if duplicates[n] then
+                player.print("Skipped loading duplicate " .. newBP.name)
+              end
+            end
+            cursor_stack.label = book.name
+          else
+            player.print("Not enough blueprints in the book. Need " .. needed .. " more") --TODO localisation
+            return
+          end
+        else
+          player.print("Not enough blueprints in the book. Need " .. count - countBookBlueprints .. " more") --TODO localisation
+          return
+        end
+
+      end
+      return true
+    end,
+
+    blueprintInfoBookExport = function(player, _, blueprintIndex)
+      saveToFile(player, blueprintIndex, true)
+    end,
+
+    blueprintInfoBookRename = function(player, guiSettings, blueprintIndex)
+      if blueprintIndex ~= nil and guiSettings ~= nil then
+        if guiSettings.renameWindowVisable then
+          guiSettings.renameWindow.destroy()
+        end
+        guiSettings.renameWindowVisable = true
+        guiSettings.renameWindow = createRenameWindow(game.players[player.index].gui.center, blueprintIndex, global.books[player.force.name][blueprintIndex].name, true)
+      end
+    end,
+
+    blueprintRenameBookOk = function(player, guiSettings, blueprintIndex)
+      if guiSettings.renameWindowVisable and blueprintIndex ~= nil then
+        local newName = guiSettings.renameWindow.blueprintRenameText.text
+        if newName ~= nil then
+          newName = cleanupName(newName)
+          if newName ~= ""  then
+            local blueprintData = global.books[player.force.name][blueprintIndex]
+            local oldName = blueprintData.name
+            blueprintData.name = newName
+            Game.print_force(player.force, {"msg-blueprint-renamed", player.name, oldName, newName})
+            guiSettings.renameWindow.destroy()
+            guiSettings.renameWindowVisable = false
+            return true
+          end
         end
       end
     end,
@@ -478,21 +723,22 @@ on_gui_click = {
           num = "0" .. num
         end
         local cursor_stack = player.cursor_stack
-        if cursor_stack and cursor_stack.valid_for_read and cursor_stack.type == "blueprint" and cursor_stack.is_blueprint_setup() then
+        if cursor_stack and cursor_stack.valid_for_read and
+          ( ( cursor_stack.type == "blueprint" and cursor_stack.is_blueprint_setup() ) or
+          ( cursor_stack.type == "blueprint-book" and isValidSlot(cursor_stack.get_inventory(defines.inventory.item_active)[1], "setup") )
+          )
+        then
           -- read blueprint from cursor
           local blueprint = cursor_stack
+          if cursor_stack.type == "blueprint-book" then
+            blueprint = cursor_stack.get_inventory(defines.inventory.item_active)[1]
+          end
+
           local blueprintData = getBlueprintData(blueprint)
           if blueprintData then
-
-            blueprintData.name = blueprint.label or "new_" .. num
-            blueprintData.name = cleanupName(blueprintData.name)
-
-            table.insert(global.blueprints[player.force.name], {data = BlueprintString.toString(blueprintData), name = blueprintData.name})
-            table.sort(global.blueprints[player.force.name], sortBlueprint)
-            Game.print_force(player.force, {"", player.name, ": ",{"msg-blueprint-imported"}}) --TODO localisation
-            Game.print_force(player.force, "Name: " .. blueprintData.name) --TODO localisation
+            local name = blueprint.label or "new_" .. num
+            return addBlueprintToTable(player, name, blueprintData)
           end
-          return true
         else
           guiSettings.newWindow = createNewBlueprintWindow(game.players[player.index].gui.center, "new_" .. num)
           guiSettings.newWindowVisable = true
@@ -510,55 +756,40 @@ on_gui_click = {
       end
     end,
 
-    blueprintNewImport = function(player, guiSettings, event)
+    blueprintNewImport = function(player, guiSettings, _, event)
       if not guiSettings.newWindowVisable then
         return
       end
-      local name = guiSettings.newWindow.blueprintNewNameFlow.blueprintNewNameText.text
+      local name = cleanupName(guiSettings.newWindow.blueprintNewNameFlow.blueprintNewNameText.text)
       if name == nil or name == "" then
         name = "new_" .. (#global.blueprints[player.force.name] + 1)
-      else
-        name = cleanupName(name)
       end
 
       local importString = string.trim(guiSettings.newWindow.blueprintNewImportFlow.blueprintNewImportText.text)
       local blueprintData
       if importString == nil or importString == "" then
-        -- read blueprint in hotbar
-        local blueprint = findBlueprint(player, "setup")
-        if blueprint == nil then
-          player.print({"msg-no-blueprint"})
-          return
-        end
-        blueprintData = getBlueprintData(blueprint)
-        if not blueprintData then
-          player.print({"msg-problem-string"})
-          return
-        end
+        player.print({"msg-empty-string"})
+        return
+      end
+      -- read pasted string
+      if string.starts_with(importString, "do local") and event.element.parent.parent.blueprintNewUnsafeFlow.unsafe.state then
+        blueprintData = loadstring(importString)()
       else
-        -- read pasted string
-        if string.starts_with(importString, "do local") and event.element.parent.parent.blueprintNewUnsafeFlow.unsafe.state then
-          blueprintData = loadstring(importString)()
-        else
-          blueprintData = BlueprintString.fromString(importString)
-        end
-        if not blueprintData then
-          player.print({"msg-problem-string"})
-          return
-        end
+        blueprintData = BlueprintString.fromString(importString)
+      end
+      if not blueprintData then
+        player.print({"msg-problem-string"})
+        return
       end
 
       if blueprintData.name == nil then
         blueprintData.name = name
       end
 
-      table.insert(global.blueprints[player.force.name], {data = BlueprintString.toString(blueprintData), name = blueprintData.name})
-      table.sort(global.blueprints[player.force.name], sortBlueprint)
-      Game.print_force(player.force, {"", player.name, ": ",{"msg-blueprint-imported"}}) --TODO localisation
-      Game.print_force(player.force, "Name: " .. blueprintData.name) --TODO localisation
+      local inserted = addBlueprintToTable(player, blueprintData.name, blueprintData)
       guiSettings.newWindow.destroy()
       guiSettings.newWindowVisable = false
-      return true
+      return inserted
     end,
 
     blueprintRenameCancel = function(_, guiSettings)
@@ -605,7 +836,7 @@ on_gui_click = {
       end
     end,
 
-    blueprintInfoDelete = function(player, _, _, blueprintIndex)
+    blueprintInfoDelete = function(player, _, blueprintIndex)
       if blueprintIndex then
         debugLog(blueprintIndex)
         Game.print_force(player.force, player.name.." deleted "..global.blueprints[player.force.name][blueprintIndex].name) --TODO localisation
@@ -614,21 +845,27 @@ on_gui_click = {
       end
     end,
 
-    blueprintInfoLoad = function(player, guiSettings, _, blueprintIndex)
+    blueprintInfoLoad = function(player, guiSettings, blueprintIndex)
       -- Load TO hotbar
       if not blueprintIndex then
         return
       end
-      local blueprint = findBlueprint(player, "empty")
 
-      if not blueprint and guiSettings.overwrite then
-        blueprint = findBlueprint(player, "setup")
+      local cursor_stack = player.cursor_stack
+      local blueprint
+      if cursor_stack and cursor_stack.valid_for_read and cursor_stack.type == "blueprint" then
+        blueprint = cursor_stack
+      else
+        blueprint = findBlueprint(player, "empty")
+        if not blueprint and guiSettings.overwrite then
+          blueprint = findBlueprint(player, "setup")
+        end
       end
 
       local blueprintData = global.blueprints[player.force.name][blueprintIndex]
 
       if blueprint ~= nil and blueprintData ~= nil then
-        local status, err = pcall(function() setBlueprintData(player.force, blueprint, blueprintData) end )
+        local status, err = setBlueprintData(player.force, blueprint, blueprintData)
         if status then
           player.print({"msg-blueprint-loaded", "'"..blueprintData.name.."'"})
         else
@@ -644,15 +881,11 @@ on_gui_click = {
       end
     end,
 
-    blueprintInfoExport = function(player, _, _, blueprintIndex)
-      -- Export to file
-      if blueprintIndex ~= nil then
-        local folder = player.name ~= "" and player.name:gsub("[/\\:*?\"<>|]", "_") .."/"
-        saveBlueprint(player, blueprintIndex, true, folder)
-      end
+    blueprintInfoExport = function(player, _, blueprintIndex)
+      saveToFile(player, blueprintIndex, false)
     end,
 
-    blueprintInfoRename = function(player, guiSettings, _, blueprintIndex)
+    blueprintInfoRename = function(player, guiSettings, blueprintIndex)
       if blueprintIndex ~= nil and guiSettings ~= nil then
         if guiSettings.renameWindowVisable then
           guiSettings.renameWindow.destroy()
@@ -662,7 +895,7 @@ on_gui_click = {
       end
     end,
 
-    blueprintInfoRenameOk = function(player, guiSettings, _, blueprintIndex)
+    blueprintRenameOk = function(player, guiSettings, blueprintIndex)
       if guiSettings.renameWindowVisable and blueprintIndex ~= nil then
         local newName = guiSettings.renameWindow.blueprintRenameText.text
         if newName ~= nil then
@@ -723,14 +956,11 @@ on_gui_click = {
           for _, bp in pairs(global.blueprints[forceName]) do
             names[bp.name] = bp
           end
-          log(serpent.block(names,{comment=false}))
           for _, blueprint in pairs(result) do
-            log(serpent.block(blueprint,{comment=false}))
-            log(serpent.block(names[blueprint.name],{comment=false}))
             if names[blueprint.name] and blueprint.data == names[blueprint.name].data then
               Game.print_force(forceName, {"msg-blueprint-exists", blueprint.name})
             else
-              table.insert(global.blueprints[forceName], blueprint)            
+              table.insert(global.blueprints[forceName], blueprint)
             end
           end
           guiSettings.import.window.destroy()
@@ -756,18 +986,16 @@ on_gui_click = {
         local guiSettings = global.guiSettings[event.element.player_index]
         local data = split(event.element.name,"_") or {}
         local blueprintIndex = tonumber(data[1])
-        --log(serpent.line(data))
         local buttonName = data[2] or event.element.name
         if not player then
           Game.print_all("Something went horribly wrong")
           return
         end
         if buttonName and on_gui_click[buttonName] then
-          if on_gui_click[buttonName](player, guiSettings, event, blueprintIndex) then
-            local forceName = player.force.name
+          if on_gui_click[buttonName](player, guiSettings, blueprintIndex, event) then
             for _, p in pairs(player.force.players) do
               if global.guiSettings[p.index].windowVisable then
-                createBlueprintWindow(p, global.blueprints[forceName], global.guiSettings[p.index])
+                createBlueprintWindow(p, global.guiSettings[p.index])
               end
             end
           end
