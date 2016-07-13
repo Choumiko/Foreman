@@ -292,10 +292,12 @@ function createBlueprintFrame(gui, index, blueprintData)
   end
   local frame = gui.add({type="frame", name=index .. "_blueprintInfoFrame", direction="horizontal", style="blueprint_thin_frame"})
   local buttonFlow = frame.add({type="flow", name=index .. "_InfoButtonFlow", direction="horizontal", style="blueprint_button_flow"})
-  buttonFlow.add({type="sprite-button", name=index .. "_blueprintInfoDelete", sprite="delete_sprite", style="blueprint_sprite_button"})
-  buttonFlow.add({type="button", name=index .. "_blueprintInfoLoad", caption={"btn-blueprint-load"}, style="blueprint_button_style"})
-  buttonFlow.add({type="button", name=index .. "_blueprintInfoExport", caption={"btn-blueprint-export"}, style="blueprint_button_style"})
-  buttonFlow.add({type="sprite-button", name=index .. "_blueprintInfoRename", sprite="rename_sprite", caption="n", style="blueprint_sprite_button"})
+  
+  buttonFlow.add({type="sprite-button", name=index .. "_blueprintInfoDelete", tooltip={"tooltip-blueprint-delete"}, sprite="delete_sprite", style="blueprint_sprite_button"})
+  buttonFlow.add({type="sprite-button", name=index .. "_blueprintInfoLoad", tooltip={"tooltip-blueprint-load"}, sprite="load_sprite", style="blueprint_sprite_button"})
+  buttonFlow.add({type="sprite-button", name=index .. "_blueprintInfoExport", tooltip={"tooltip-blueprint-export"}, sprite="save_sprite", style="blueprint_sprite_button"})
+  buttonFlow.add({type="sprite-button", name=index .. "_blueprintInfoRename", tooltip={"tooltip-blueprint-rename"}, sprite="rename_sprite", style="blueprint_sprite_button"})
+  
   frame.add({type="label", name=index .. "_blueprintInfoName", caption=blueprintData.name, style="blueprint_label_style"})
 end
 
@@ -322,7 +324,7 @@ function createBlueprintWindow(player, blueprints, guiSettings)
 
   buttons.add({type="sprite-button", name="blueprintNew", tooltip={"tooltip-blueprint-import"}, sprite="add_sprite", style="blueprint_sprite_button"})
   
-  buttons.add{type="sprite-button", name="blueprintNewBook", tooltip={"tooltip-blueprint-import-book"}, style="blueprint_sprite_button", sprite="item/blueprint-book"}
+  buttons.add{type="sprite-button", name="blueprintNewBook", tooltip={"tooltip-blueprint-import-book"}, style="blueprint_sprite_button", sprite="load_book_sprite"}
 
   buttons.add({type="sprite-button", name="blueprintFixPositions", tooltip={"tooltip-blueprint-fix"}, style="blueprint_sprite_button", sprite="item/repair-pack"})
   

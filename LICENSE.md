@@ -20,3 +20,5 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
+graphics/save_icon.png made by http://www.freepik.com from http://www.flaticon.com is licensed by 
+http://creativecommons.org/licenses/by/3.0/"

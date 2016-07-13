@@ -18,13 +18,13 @@ data.raw["gui-style"].default["blueprint_button_style"] =
 data.raw["gui-style"].default["blueprint_sprite_button"] =
   {
     type = "button_style",
-    parent = "button_style",
+    parent = "blueprint_button_style",
     width = 32,
     height = 32,
-    top_padding = 1,
-    right_padding = 5,
-    bottom_padding = 1,
-    left_padding = 5,
+    top_padding = 0,
+    right_padding = 0,
+    bottom_padding = 0,
+    left_padding = 0,
     left_click_sound =
     {
       {
@@ -42,7 +42,6 @@ data:extend({
     priority = "extra-high-no-scale",
     width = 16,
     height = 16,
-    scale = 2,
   },
   {
     type="sprite",
@@ -51,7 +50,6 @@ data:extend({
     priority = "extra-high-no-scale",
     width = 64,
     height = 64,
-    scale = 0.5,
   },
   {
     type="sprite",
@@ -69,6 +67,30 @@ data:extend({
     priority = "extra-high-no-scale",
     width = 32,
     height = 32,
+  },
+  {
+    type="sprite",
+    name="load_sprite",
+    filename = "__Foreman__/graphics/load_icon.png",
+    priority = "extra-high-no-scale",
+    width = 32,
+    height = 32,
+  },
+  {
+    type="sprite",
+    name="load_book_sprite",
+    filename = "__Foreman__/graphics/load_book.png",
+    priority = "extra-high-no-scale",
+    width = 32,
+    height = 32,
+  },
+  {
+    type="sprite",
+    name="save_sprite",
+    filename = "__Foreman__/graphics/save_icon.png",
+    priority = "extra-high-no-scale",
+    width = 64,
+    height = 64,
   },
 
 })
@@ -97,14 +119,6 @@ data.raw["gui-style"].default["blueprint_thin_frame"] =
     bottom_padding = 2,
   }
 
-data.raw["gui-style"].default["blueprint_main_frame"] =
-  {
-    type = "frame_style",
-    parent="frame_style",
-    top_padding  = 0,
-    bottom_padding = 0,
-  }
-
 data.raw["gui-style"].default["blueprint_button_flow"] =
   {
     type = "flow_style",
@@ -119,39 +133,6 @@ data.raw["gui-style"].default["blueprint_info_button_flow"] =
     top_padding  = 4,
   }
 
-data.raw["gui-style"].default["blueprint_selected_button"] =
-  {
-    type = "button_style",
-    parent = "blueprint_button_style",
-
-    default_font_color={r=0, g=0, b=0},
-    default_graphical_set =
-    {
-      type = "composition",
-      filename = "__core__/graphics/gui.png",
-      corner_size = {3, 3},
-      position = {0, 8}
-    },
-
-    hovered_font_color={r=1, g=1, b=1},
-    hovered_graphical_set =
-    {
-      type = "composition",
-      filename = "__core__/graphics/gui.png",
-      corner_size = {3, 3},
-      position = {0, 16}
-    },
-
-    clicked_font_color={r=0, g=0, b=0},
-    clicked_graphical_set =
-    {
-      type = "composition",
-      filename = "__core__/graphics/gui.png",
-      corner_size = {3, 3},
-      position = {0, 0}
-    },
-  }
-
 data.raw["gui-style"].default["blueprint_label_style"] =
   {
     type = "label_style",
@@ -159,14 +140,4 @@ data.raw["gui-style"].default["blueprint_label_style"] =
     font_color = {r=1, g=1, b=1},
     top_padding = 7,
     bottom_padding = 0,
-  }
-
-data.raw["gui-style"].default["blueprint_checkbox_style"] =
-  {
-    type = "checkbox_style",
-    parent = "checkbox_style",
-    top_padding = 3,
-    right_padding = 10,
-    bottom_padding = 3,
-    left_padding = 3,
   }

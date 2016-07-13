@@ -13,16 +13,20 @@ Features
 - Export all stored blueprints (E)
 - Load multiple blueprints (L)
 
-- Delete stored blueprints (x)
-- Load blueprints to toolbar (l)
+- Delete stored blueprints
+- Load blueprints to toolbar
 - Export blueprints to file (e)
-- Rename blueprints (n)
+- Rename blueprints
 - Imports/Exports [Blueprint Strings](https://mods.factorio.com/mods/DaveMcW/blueprint-string)  (Thanks Dave!)
 
 Todo
 ---
 - Export/Import blueprint books
-- add icons for l and e button
+- add icon for e button
+
+Credits
+---
+graphics/save_icon.jpg made by [Freepik](http://www.freepik.com) from [Flaticon](http://www.flaticon.com) is licensed by [CC 3.0 BY](http://creativecommons.org/licenses/by/3.0/)
 
 ***
 Changelog

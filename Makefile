@@ -4,7 +4,7 @@ VERSION_STRING := 0.1.26
 OUTPUT_NAME := $(PACKAGE_NAME)_$(VERSION_STRING)
 OUTPUT_DIR := build/$(OUTPUT_NAME)
 
-PKG_COPY := $(wildcard *.md) locale blueprintstring
+PKG_COPY := $(wildcard *.md) graphics locale blueprintstring
 
 SED_FILES := $(shell find . -iname '*.json' -type f -not -path "./build/*") $(shell find . -iname '*.lua' -type f -not -path "./build/*")
 OUT_FILES := $(SED_FILES:%=$(OUTPUT_DIR)/%)
