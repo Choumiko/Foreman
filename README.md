@@ -6,21 +6,28 @@ Foreman is a mod for managing blueprints in game. You can manage a list of bluep
 
 Features
 ---
-- Save blueprints from toolbar/cursor
-- Save blueprint books
-- Import blueprint/books from text
-- Fix positions in blueprints
-- Export all stored blueprints/books (E)
-- Load multiple blueprints/books (L)
+###Top buttons:
 
-- Delete stored blueprints
-- Load blueprints to toolbar or to cursor (if clicked with a blueprint)
-- Export blueprints to file
-- Rename blueprints
-- Imports/Exports [Blueprint Strings](https://mods.factorio.com/mods/DaveMcW/blueprint-string)  (Thanks Dave!)
+ - Save blueprints from toolbar/cursor
+ - Save blueprint books from cursor
+ - Import blueprint/books from text
+ - Fix positions in blueprints
+ - Export all stored blueprints/books (E button)
+ - Load multiple blueprints/books (L button)
+
+###Per blueprint/book buttons
+
+ - Delete stored blueprints
+ - Load blueprint to toolbar or to cursor (if clicked with a blueprint)
+ - Export blueprint to file
+ - Rename blueprints
+ - Imports/Exports [Blueprint Strings](https://mods.factorio.com/mods/DaveMcW/blueprint-string)  (Thanks Dave!)
 
 Todo
 ---
+- cleanup the top buttons, only one button to read in strings, one button to add blueprints/books from cursor
+- fix duplicate checking
+- add 2 missing button graphics
 - ???
 
 Credits
@@ -30,6 +37,13 @@ graphics/save_icon.jpg made by [Freepik](http://www.freepik.com) from [Flaticon]
 ***
 Changelog
 ---
+0.2.2
+
+- fixed importing books from string not working. Books from 0.2.1 have to be exported again for the string to work
+- Changed L button to load blueprint string, exported books or the string created by the E button
+- added german translation by luma88
+- removed debug log
+
 0.2.1
 
 - added support for blueprint books
