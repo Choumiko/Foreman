@@ -2,7 +2,7 @@
 
 Foreman is a mod for managing blueprints in game. You can manage a list of blueprints in your save game, export them to text and import blueprints others have shared.
 
-![Main GUI](http://i.imgur.com/AicS1tS.png)
+![Main GUI](http://i.imgur.com/6SL6FNE.png)
 
 Features
 ---
