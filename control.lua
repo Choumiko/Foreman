@@ -749,6 +749,14 @@ on_gui_click = {
       end
     end,
 
+    blueprintImportAll = function(player, guiSettings)
+      if not guiSettings.import then
+        guiSettings.import = createImportWindow(player)
+      else
+        destroyImportWindow(guiSettings)
+      end
+    end,
+
     blueprintFixPositions = function(player)
       local cursor_stack = player.cursor_stack
       if cursor_stack and cursor_stack.valid_for_read and cursor_stack.type == "blueprint" and cursor_stack.is_blueprint_setup() then
@@ -759,35 +767,6 @@ on_gui_click = {
         player.print("Fixed positions") --TODO localisation
       else
         player.print("Click this button with a blueprint to fix the positions") --TODO localisation
-      end
-    end,
-
-    --exports blueprints and books into a single file
-    blueprintExportAll = function(player)
-      local data = {books={}, blueprints={}}
-      data.blueprints = global.blueprints[player.force.name]
-      data.books = global.books[player.force.name]
-
-      if #data.blueprints > 0 or #data.books > 0 then
-        local stringOutput = serpent.dump(data)
-        if not stringOutput then
-          player.print({"msg-problem-blueprint"})
-          return
-        end
-        local folder = player.name ~= "" and player.name:gsub("[/\\:*?\"<>|]", "_") .."/"
-        local filename = "export" .. #data.blueprints .. "_" .. #data.books
-        filename = "blueprint-string/" .. folder .. filename .. ".lua"
-        game.write_file(filename , stringOutput)
-        Game.print_force(player.force, {"", player.name, " ", {"msg-export-blueprint"}}) --TODO localisation
-        Game.print_force(player.force, "File: script-output/".. folder .. filename) --TODO localisation
-      end
-    end,
-
-    blueprintImportAll = function(player, guiSettings)
-      if not guiSettings.import then
-        guiSettings.import = createImportWindow(player)
-      else
-        destroyImportWindow(guiSettings)
       end
     end,
 
@@ -816,16 +795,28 @@ on_gui_click = {
       end
     end,
 
-    blueprintInfoDelete = function(player, _, blueprintIndex)
-      return deleteBlueprint(player, blueprintIndex)
-    end,
+    --exports blueprints and books into a single file
+    blueprintExportAll = function(player)
+      local data = {books={}, blueprints={}}
+      data.blueprints = global.blueprints[player.force.name]
+      data.books = global.books[player.force.name]
 
-    blueprintInfoBookDelete = function(player, _, blueprintIndex)
-      return deleteBlueprint(player,blueprintIndex, true)
+      if #data.blueprints > 0 or #data.books > 0 then
+        local stringOutput = serpent.dump(data)
+        if not stringOutput then
+          player.print({"msg-problem-blueprint"})
+          return
+        end
+        local folder = player.name ~= "" and player.name:gsub("[/\\:*?\"<>|]", "_") .."/"
+        local filename = "export" .. #data.blueprints .. "_" .. #data.books
+        filename = "blueprint-string/" .. folder .. filename .. ".lua"
+        game.write_file(filename , stringOutput)
+        Game.print_force(player.force, {"", player.name, " ", {"msg-export-blueprint"}}) --TODO localisation
+        Game.print_force(player.force, "File: script-output/".. folder .. filename) --TODO localisation
+      end
     end,
 
     blueprintInfoLoad = function(player, guiSettings, blueprintIndex)
-      -- Load TO hotbar
       if not blueprintIndex then
         return
       end
@@ -986,32 +977,6 @@ on_gui_click = {
       end
     end,
 
-    blueprintRenameCancel = function(_, guiSettings)
-      if guiSettings.rename then
-        guiSettings.rename.window.destroy()
-        guiSettings.rename = nil
-      end
-    end,
-
-    blueprintNewBookImport = function(player, guiSettings)
-      if not guiSettings.import then
-        return
-      end
-      local name = cleanupName(guiSettings.import.name.text)
-      if name == nil or name == "" then
-        name = "newBook_" .. (#global.books[player.force.name] + 1)
-      end
-
-      local importString = string.trim(guiSettings.import.importString.text)
-      if importString == nil or importString == "" then
-        player.print({"msg-empty-string"})
-        return
-      end
-      local inserted = addBookFromString(player, importString, name)
-      destroyImportWindow(guiSettings)
-      return inserted
-    end,
-
     blueprintImportOk = function(player, guiSettings)
       if not guiSettings.import or not guiSettings.import.window.valid then
         return
@@ -1059,6 +1024,21 @@ on_gui_click = {
 
     blueprintImportCancel = function(_, guiSettings)
       destroyImportWindow(guiSettings)
+    end,
+    
+    blueprintRenameCancel = function(_, guiSettings)
+      if guiSettings.rename then
+        guiSettings.rename.window.destroy()
+        guiSettings.rename = nil
+      end
+    end,
+
+    blueprintInfoDelete = function(player, _, blueprintIndex)
+      return deleteBlueprint(player, blueprintIndex)
+    end,
+
+    blueprintInfoBookDelete = function(player, _, blueprintIndex)
+      return deleteBlueprint(player,blueprintIndex, true)
     end,
 
     on_gui_click = function(event_)
