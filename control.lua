@@ -299,7 +299,7 @@ function createSettingsWindow(player, guiSettings)
 
     --local flow = frame.add({type="flow", name="blueprintSettingsFlow", direction="vertical"})
     local overwrite = frame.add({type="checkbox", name="blueprintSettingOverwrite", caption={"lbl-blueprint-overwrite"}, state = guiSettings.overwrite})
-    overwrite.tooltip = {"blueprint-tt-overwrite"}
+    overwrite.tooltip = {"lbl-blueprint-overwrite"}
     local displayCountFlow = frame.add({type="flow", name="blueprintDisplayCountFlow", direction="horizontal" }) --style="fatcontroller_thin_frame"})
     displayCountFlow.add{type="label", caption={"window-blueprint-displaycount"}}
 
