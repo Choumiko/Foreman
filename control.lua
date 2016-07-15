@@ -419,25 +419,30 @@ function createRenameWindow(player, index, oldName, book)
   return {window = frame, name = name, book = book}
 end
 
-function createNewBlueprintWindow(player)
+function createImportWindow(player)
   local gui = player.gui.center
-  local frame = gui.add{type="frame", name="blueprintNewWindow", direction="vertical", caption={"window-blueprint-new"}}
+  local frame = gui.add{type="frame", direction="vertical", caption={"window-blueprint-new"}}
   local flow = frame.add{type="flow", direction="horizontal"}
   flow.add{type="label", caption={"lbl-blueprint-new-name"}}
   local name = flow.add{type="textfield", name="blueprintNewNameText"}
 
   flow = frame.add{type="flow", direction="horizontal"}
   flow.add{type="label", caption={"lbl-blueprint-new-import"}}
-  local importString = flow.add{type="textfield", name="blueprintNewImportText"}
+  local importString = flow.add{type="textfield", name="blueprintImportText"}
 
   flow = frame.add{type="flow", direction="horizontal"}
   local unsafe = flow.add{type="checkbox", name="unsafe", caption="allow scripts (unsafe!)", state = false}
 
   flow = frame.add{type="flow", direction="horizontal"}
-  flow.add{type="button", name="blueprintNewCancel", caption={"btn-cancel"}}
-  flow.add{type="button", name="blueprintNewImport", caption={"btn-import"}}
+  flow.add{type="button", name="blueprintImportCancel", caption={"btn-cancel"}}
+  flow.add{type="button", name="blueprintImport", caption={"btn-import"}}
 
   return {window = frame, name = name, importString = importString, unsafe = unsafe}
+end
+
+function destroyImportWindow(guiSettings)
+  guiSettings.import.window.destroy()
+  guiSettings.import = false
 end
 
 --write to blueprint
@@ -618,10 +623,9 @@ on_gui_click = {
         end
       else
         if not guiSettings.import then
-          guiSettings.import = createNewBlueprintWindow(player)
+          guiSettings.import = createImportWindow(player)
         else
-          guiSettings.import.window.destroy()
-          guiSettings.import = false
+          destroyImportWindow(guiSettings)
         end
       end
     end,
@@ -641,8 +645,7 @@ on_gui_click = {
         return
       end
       local inserted = addBookFromString(player, importString, name)
-      guiSettings.import.window.destroy()
-      guiSettings.import = nil
+      destroyImportWindow(guiSettings)
       return inserted
     end,
 
@@ -766,18 +769,16 @@ on_gui_click = {
         end
       else
         if not guiSettings.import then
-          guiSettings.import = createNewBlueprintWindow(player)
+          guiSettings.import = createImportWindow(player)
         else
-          guiSettings.import.window.destroy()
-          guiSettings.import = false
+          destroyImportWindow(guiSettings)
         end
       end
     end,
 
-    blueprintNewCancel = function(_, guiSettings)
+    blueprintImportCancel = function(_, guiSettings)
       if guiSettings.import then
-        guiSettings.import.window.destroy()
-        guiSettings.import = nil
+        destroyImportWindow(guiSettings)
       end
     end,
 
@@ -930,14 +931,13 @@ on_gui_click = {
 
     blueprintImportAll = function(player, guiSettings)
       if not guiSettings.import then
-        guiSettings.import = createNewBlueprintWindow(player)
+        guiSettings.import = createImportWindow(player)
       else
-        guiSettings.import.window.destroy()
-        guiSettings.import = nil
+        destroyImportWindow(guiSettings)
       end
     end,
 
-    blueprintNewImport = function(player, guiSettings)
+    blueprintImport = function(player, guiSettings)
       if not guiSettings.import or not guiSettings.import.window.valid then
         return
       end
@@ -946,8 +946,7 @@ on_gui_click = {
       local importString = string.trim(guiSettings.import.importString.text)
       if not importString or importString == "" then
         player.print({"msg-empty-string"})
-        guiSettings.import.window.destroy()
-        guiSettings.import = nil
+        destroyImportWindow(guiSettings)
         return
       end
       -- plain blueprintstring, may contain name or not
@@ -959,10 +958,9 @@ on_gui_click = {
           return
         end
         name = blueprintData.name or name or "new_" .. (#global.blueprints[player.force.name] + 1)
-        blueprintData.name = nil 
+        blueprintData.name = nil
         local inserted = addBlueprintToTable(player, name, blueprintData)
-        guiSettings.import.window.destroy()
-        guiSettings.import = nil
+        destroyImportWindow(guiSettings)
         return inserted
       end
       -- "do local" type string, can be from export all or a book
@@ -970,8 +968,7 @@ on_gui_click = {
       if not status then
         player.print({"msg-import-blueprint-fail"})
         player.print(result)
-        guiSettings.import.window.destroy()
-        guiSettings.import = nil
+        destroyImportWindow(guiSettings)
         return
       end
       local inserted = false
@@ -998,15 +995,13 @@ on_gui_click = {
       elseif result.blueprints then -- exported book
         inserted = addBookFromString(player, importString)
       end
-      guiSettings.import.window.destroy()
-      guiSettings.import = nil
+      destroyImportWindow(guiSettings)
       return inserted
     end,
 
     blueprintImportAllCancel = function(_, guiSettings)
       if guiSettings.import and guiSettings.import.window.valid then
-        guiSettings.import.window.destroy()
-        guiSettings.import = nil
+        destroyImportWindow(guiSettings)
       end
     end,
 
