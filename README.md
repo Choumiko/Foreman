@@ -42,6 +42,7 @@ Changelog
 - added Hotkey to clear blueprint book on the cursor (default Shift + right click, must be enabled in the settings!)
 - added option to move the loaded blueprint when the load blueprint button is clicked with an empty cursor
 - load a single blueprint into a book when 'load blueprint' button is clicked with a blueprint book with an empty blueprint in the active slot
+- added missing tooltips to buttons
 
 0.2.2
 

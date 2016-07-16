@@ -385,10 +385,12 @@ function GUI.createSettingsWindow(player, guiSettings)
     setCursor.tooltip = {"tooltip-blueprint-setCursor"}
 
     local displayCountFlow = frame.add{type="flow", direction="horizontal" }
-    displayCountFlow.add{type="label", caption={"window-blueprint-displaycount"}}
+    displayCountFlow.add{type="label", caption={"window-blueprint-displaycount"}, tooltip = {"tooltip-blueprint-displayCount"}}
 
     local displayCount = displayCountFlow.add{type="textfield", name="blueprintDisplayCountText", text=guiSettings.displayCount .. ""}
     displayCount.style.minimal_width = 30
+    displayCount.tooltip = {"tooltip-blueprint-displayCount"}
+    
     local buttonFlow = frame.add{type="flow", direction="horizontal"}
     buttonFlow.add{type="button", name="blueprintSettingsOk", caption={"btn-ok"}, style = "blueprint_button_style"}
     buttonFlow.add{type="button", name="blueprintSettingsCancel", caption={"btn-cancel"}, style = "blueprint_button_style"}
@@ -817,7 +819,7 @@ on_gui_click = {
         if guiSettings.windows then
           guiSettings.overwrite = guiSettings.windows.overwrite.state
           guiSettings.hotkey = guiSettings.windows.hotkey.state
-          guiSettings.setCursor = guiSettings.window.setCursor.state
+          guiSettings.setCursor = guiSettings.windows.setCursor.state
           local newInt = tonumber(guiSettings.windows.displayCount.text) or 1
           newInt = newInt > 0 and newInt or 1
           global.guiSettings[player.index].displayCount = newInt
