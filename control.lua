@@ -305,8 +305,9 @@ function findBlueprint(player, state)
     end
   end
 end
+GUI = {}
 
-function createSettingsWindow(player, guiSettings)
+function GUI.createSettingsWindow(player, guiSettings)
   if not player.gui.center.blueprintSettingsWindow then
     local frame = player.gui.center.add{
       type="frame",
@@ -332,7 +333,7 @@ function createSettingsWindow(player, guiSettings)
   end
 end
 
-function createBlueprintFrameBook(gui, index, caption, countBP)
+function GUI.createBlueprintFrameBook(gui, index, caption, countBP)
   if not gui then
     return
   end
@@ -346,7 +347,7 @@ function createBlueprintFrameBook(gui, index, caption, countBP)
   frame.add{type="label", caption=caption, style="blueprint_label_style", tooltip = {"", countBP, " ", {"item-name.blueprint"}}}
 end
 
-function createBlueprintFrame(gui, index, caption)
+function GUI.createBlueprintFrame(gui, index, caption)
   if not gui then
     return
   end
@@ -360,7 +361,7 @@ function createBlueprintFrame(gui, index, caption)
   frame.add({type="label", caption=caption, style="blueprint_label_style"})
 end
 
-function createBlueprintWindow(player, guiSettings)
+function GUI.createBlueprintWindow(player, guiSettings)
   if not player or not guiSettings then
     return
   end
@@ -410,17 +411,17 @@ function createBlueprintWindow(player, guiSettings)
 
   local books = global.books[player.force.name]
   for i, bookData in pairs(books) do
-    createBlueprintFrameBook(flow, i, bookData.name, #bookData.blueprints)
+    GUI.createBlueprintFrameBook(flow, i, bookData.name, #bookData.blueprints)
   end
   local blueprints = global.blueprints[player.force.name]
   for i,blueprintData in pairs(blueprints) do
-    createBlueprintFrame(flow, i, blueprintData.name)
+    GUI.createBlueprintFrame(flow, i, blueprintData.name)
   end
   guiSettings.windowVisable = true
   return window
 end
 
-function createRenameWindow(player, index, oldName, book)
+function GUI.createRenameWindow(player, index, oldName, book)
   local gui = game.players[player.index].gui.center
   if oldName == nil then
     oldName = ""
@@ -437,7 +438,7 @@ function createRenameWindow(player, index, oldName, book)
   return {window = frame, name = name, book = book}
 end
 
-function createImportWindow(player)
+function GUI.createImportWindow(player)
   local gui = player.gui.center
   local frame = gui.add{type="frame", direction="vertical", caption={"window-blueprint-new"}}
   local flow = frame.add{type="flow", direction="horizontal"}
@@ -457,7 +458,7 @@ function createImportWindow(player)
   return {window = frame, name = name, importString = importString, unsafe = unsafe}
 end
 
-function destroyImportWindow(guiSettings)
+function GUI.destroyImportWindow(guiSettings)
   if guiSettings.import and guiSettings.import.window.valid then
     guiSettings.import.window.destroy()
   end
@@ -640,14 +641,12 @@ importBlueprintString = function(player, importString, name)
 end
 
 importBookFromString = function(player, data, name)
-  log("importBookFromString")
   if data.blueprints and #data.blueprints > 0 then
     return addBookToTable(player, data, name)
   end
 end
 
 importAll = function(player, data)
-  log("importAll")
   local inserted = false
   for _, blueprint in pairs(data.blueprints) do
     inserted = importBlueprintString(player, blueprint.data, blueprint.name) or inserted
@@ -677,7 +676,7 @@ on_gui_click = {
 
     blueprintTools = function(player, guiSettings)
       if player.gui.left.blueprintWindow == nil then
-        createBlueprintWindow(player, global.guiSettings[player.index])
+        GUI.createBlueprintWindow(player, global.guiSettings[player.index])
       else
         player.gui.left.blueprintWindow.destroy()
         if remote.interfaces.YARM and guiSettings.YARM_old_expando then
@@ -707,9 +706,9 @@ on_gui_click = {
         return addBlueprintFromCursor(player, blueprint)
       else
         if not guiSettings.import then
-          guiSettings.import = createImportWindow(player)
+          guiSettings.import = GUI.createImportWindow(player)
         else
-          destroyImportWindow(guiSettings)
+          GUI.destroyImportWindow(guiSettings)
         end
       end
     end,
@@ -725,18 +724,18 @@ on_gui_click = {
         end
       else
         if not guiSettings.import then
-          guiSettings.import = createImportWindow(player)
+          guiSettings.import = GUI.createImportWindow(player)
         else
-          destroyImportWindow(guiSettings)
+          GUI.destroyImportWindow(guiSettings)
         end
       end
     end,
 
     blueprintImportAll = function(player, guiSettings)
       if not guiSettings.import then
-        guiSettings.import = createImportWindow(player)
+        guiSettings.import = GUI.createImportWindow(player)
       else
-        destroyImportWindow(guiSettings)
+        GUI.destroyImportWindow(guiSettings)
       end
     end,
 
@@ -754,7 +753,7 @@ on_gui_click = {
     end,
 
     blueprintSettings = function(player, guiSettings)
-      local elements = createSettingsWindow(player, guiSettings)
+      local elements = GUI.createSettingsWindow(player, guiSettings)
       guiSettings.windows = elements
     end,
 
@@ -767,7 +766,7 @@ on_gui_click = {
           global.guiSettings[player.index].displayCount = newInt
         end
         player.gui.center.blueprintSettingsWindow.destroy()
-        createBlueprintWindow(player, guiSettings)
+        GUI.createBlueprintWindow(player, guiSettings)
       end
     end,
 
@@ -875,9 +874,9 @@ on_gui_click = {
           local duplicates = {}
           local needed = count - emptyCount
           for _, blueprintOld in pairs(setup) do
-            local blueprintString = BlueprintString.toString(getBlueprintData(blueprintOld))
+            local oldEntities = getBlueprintData(blueprintOld).entities
             for n, blueprintNew in pairs(book.blueprints) do
-              if blueprintString == blueprintNew.data then
+              if util.table.compare(oldEntities, BlueprintString.fromString(blueprintNew.data).entities) then
                 duplicates[n] = true
                 duplicateCount = duplicateCount + 1
               end
@@ -929,7 +928,7 @@ on_gui_click = {
           guiSettings.rename.window.destroy()
           guiSettings.rename = nil
         end
-        guiSettings.rename = createRenameWindow(player, blueprintIndex, global.blueprints[player.force.name][blueprintIndex].name)
+        guiSettings.rename = GUI.createRenameWindow(player, blueprintIndex, global.blueprints[player.force.name][blueprintIndex].name)
       end
     end,
 
@@ -939,7 +938,7 @@ on_gui_click = {
           guiSettings.rename.window.destroy()
           guiSettings.rename = nil
         end
-        guiSettings.rename = createRenameWindow(player, blueprintIndex, global.books[player.force.name][blueprintIndex].name, true)
+        guiSettings.rename = GUI.createRenameWindow(player, blueprintIndex, global.books[player.force.name][blueprintIndex].name, true)
       end
     end,
 
@@ -975,13 +974,13 @@ on_gui_click = {
       local importString = guiSettings.import.importString.text
       if not importString or importString == "" then
         player.print({"msg-empty-string"})
-        destroyImportWindow(guiSettings)
+        GUI.destroyImportWindow(guiSettings)
         return
       end
       -- plain blueprintstring, may contain name or not
       if not importString:starts_with("do local") then
         local inserted = importBlueprintString(player, importString)
-        destroyImportWindow(guiSettings)
+        GUI.destroyImportWindow(guiSettings)
         return inserted
       end
 
@@ -990,7 +989,7 @@ on_gui_click = {
       if not status then
         player.print({"msg-import-blueprint-fail"})
         player.print(result)
-        destroyImportWindow(guiSettings)
+        GUI.destroyImportWindow(guiSettings)
         return
       end
       local inserted = false
@@ -1001,12 +1000,12 @@ on_gui_click = {
       elseif result.blueprints then
         inserted = importBookFromString(player, result)
       end
-      destroyImportWindow(guiSettings)
+      GUI.destroyImportWindow(guiSettings)
       return inserted
     end,
 
     blueprintImportCancel = function(_, guiSettings)
-      destroyImportWindow(guiSettings)
+      GUI.destroyImportWindow(guiSettings)
     end,
 
     blueprintRenameCancel = function(_, guiSettings)
@@ -1040,7 +1039,7 @@ on_gui_click = {
             sortAllBlueprints(player.force.name)
             for _, p in pairs(player.force.players) do
               if global.guiSettings[p.index].windowVisable then
-                createBlueprintWindow(p, global.guiSettings[p.index])
+                GUI.createBlueprintWindow(p, global.guiSettings[p.index])
               end
             end
           end
