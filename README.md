@@ -37,6 +37,12 @@ graphics/save_icon.jpg made by [Freepik](http://www.freepik.com) from [Flaticon]
 ***
 Changelog
 ---
+0.2.3
+
+- added Hotkey to clear blueprint book on the cursor (default Shift + right click, must be enabled in the settings!)
+- added option to move the loaded blueprint when the load blueprint button is clicked with an empty cursor
+- load a single blueprint into a book when 'load blueprint' button is clicked with a blueprint book with an empty blueprint in the active slot
+
 0.2.2
 
 - fixed importing books from string not working. Books from 0.2.1 have to be exported again for the string to work

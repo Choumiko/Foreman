@@ -19,14 +19,20 @@ local function init_global()
   global.books = global.books or {}
   global.guiSettings = global.guiSettings or {}
   global.unlocked = global.unlocked or {}
-  global.bpVersion = global.bpVersion or "0.1.2"
 end
 
 local function init_player(player)
   local i = player.index
-  global.guiSettings[i] = global.guiSettings[i] or {page = 1, displayCount = 10}
-  if global.guiSettings[i].overwrite == nil then
-    global.guiSettings[i].overwrite = false
+  global.guiSettings[i] = global.guiSettings[i] or {page = 1, displayCount = 10, overwrite = false, hotkey = false, setCursor = false}
+  local guiSettings = global.guiSettings[i]
+  if guiSettings.overwrite == nil then
+    guiSettings.overwrite = false
+  end
+  if guiSettings.hotkey == nil then
+    guiSettings.hotkey = false
+  end
+  if guiSettings.setCursor == nil then
+    guiSettings.setCursor = false
   end
 end
 
@@ -232,9 +238,18 @@ local function on_configuration_changed(changes)
         init_forces()
         init_players(true)
       end
+      if oldVersion < "0.2.3" then
+        global.bpVersion = nil
+        for i, player in pairs(game.players) do
+          init_player(player)
+          if player.gui.center.blueprintSettingsWindow then
+            player.gui.center.blueprintSettingsWindow.destroy()
+            global.guiSettings[i].windows = false
+          end
+        end
+      end
       Game.print_all("Updated Foreman from ".. oldVersion .. " to " .. newVersion)
     end
-    global.bpVersion = "0.1.2"
     global.version = newVersion
   end
   --check for other mods
@@ -264,6 +279,50 @@ script.on_event(defines.events.on_force_created, function(event) init_force(even
 
 --script.on_event(defines.events.on_forces_merging, on_forces_merging)
 script.on_event(defines.events.on_research_finished, on_research_finished)
+
+isValidSlot = function(slot, state)
+  if not slot or not slot.valid_for_read then return false end
+
+  --if state then
+  if state == "empty" then
+    return not slot.is_blueprint_setup()
+  elseif state == "setup" then
+    return slot.is_blueprint_setup()
+  end
+  --end
+  return true
+end
+
+function clearBlueprintBook(event_)
+  local _, err = pcall(function(event)
+    local player = game.players[event.player_index]
+    if not global.guiSettings[player.index].hotkey then
+      return
+    end
+    local cursor_stack = (player.cursor_stack.valid_for_read and player.cursor_stack.type == "blueprint-book") and player.cursor_stack or false
+    if cursor_stack then
+      cursor_stack.label = ""
+      local active = cursor_stack.get_inventory(defines.inventory.item_active)[1]
+      local main = cursor_stack.get_inventory(defines.inventory.item_main)
+
+      if isValidSlot(active) then
+        active.label = ""
+        active.set_blueprint_tiles({})
+        active.set_blueprint_entities({})
+      end
+      for i=1, #main do
+        if isValidSlot(main[i]) then
+          main[i].label = ""
+          main[i].set_blueprint_tiles({})
+          main[i].set_blueprint_entities({})
+        end
+      end
+    end
+  end, event_)
+  if err then game.players[event_.player_index].print(err) end
+end
+
+script.on_event("blueprint_delete_book", clearBlueprintBook)
 
 function split(stringA, sep)
   sep = sep or ":"
@@ -316,18 +375,25 @@ function GUI.createSettingsWindow(player, guiSettings)
       caption={"window-blueprint-settings"}
     }
 
+    local hotkey = frame.add{type="checkbox", name="blueprintSettingHotkey", caption={"lbl-blueprint-hotkey"}, state = guiSettings.hotkey}
+    hotkey.tooltip = {"tooltip-blueprint-hotkey"}
+
     local overwrite = frame.add{type="checkbox", name="blueprintSettingOverwrite", caption={"lbl-blueprint-overwrite"}, state = guiSettings.overwrite}
     overwrite.tooltip = {"tooltip-blueprint-overwrite"}
+
+    local setCursor = frame.add{type = "checkbox", name = "blueprintSettingSetCursor", caption={"lbl-blueprint-setCursor"}, state = guiSettings.setCursor}
+    setCursor.tooltip = {"tooltip-blueprint-setCursor"}
+
     local displayCountFlow = frame.add{type="flow", direction="horizontal" }
     displayCountFlow.add{type="label", caption={"window-blueprint-displaycount"}}
 
     local displayCount = displayCountFlow.add{type="textfield", name="blueprintDisplayCountText", text=guiSettings.displayCount .. ""}
     displayCount.style.minimal_width = 30
     local buttonFlow = frame.add{type="flow", direction="horizontal"}
-    buttonFlow.add{type="button", name="blueprintSettingsOk", caption={"btn-ok"}}
-    buttonFlow.add{type="button", name="blueprintSettingsCancel", caption={"btn-cancel"}}
+    buttonFlow.add{type="button", name="blueprintSettingsOk", caption={"btn-ok"}, style = "blueprint_button_style"}
+    buttonFlow.add{type="button", name="blueprintSettingsCancel", caption={"btn-cancel"}, style = "blueprint_button_style"}
 
-    return {overwrite = overwrite, displayCount = displayCount}
+    return {overwrite = overwrite, displayCount = displayCount, hotkey = hotkey, setCursor = setCursor}
   else
     player.gui.center.blueprintSettingsWindow.destroy()
   end
@@ -522,17 +588,6 @@ function debugDump(var, force)
       player.print(msg)
     end
   end
-end
-
-isValidSlot = function(slot, state)
-  if not slot or not slot.valid_for_read then return false end
-
-  if state == "empty" then
-    return not slot.is_blueprint_setup()
-  elseif state == "setup" then
-    return slot.is_blueprint_setup()
-  end
-  return true
 end
 
 isDuplicate = function(player, data, name)
@@ -760,7 +815,9 @@ on_gui_click = {
     blueprintSettingsOk = function(player, guiSettings)
       if player.gui.center.blueprintSettingsWindow then
         if guiSettings.windows then
-          global.guiSettings[player.index].overwrite = guiSettings.windows.overwrite.state
+          guiSettings.overwrite = guiSettings.windows.overwrite.state
+          guiSettings.hotkey = guiSettings.windows.hotkey.state
+          guiSettings.setCursor = guiSettings.window.setCursor.state
           local newInt = tonumber(guiSettings.windows.displayCount.text) or 1
           newInt = newInt > 0 and newInt or 1
           global.guiSettings[player.index].displayCount = newInt
@@ -812,6 +869,10 @@ on_gui_click = {
           local active = cursor_stack.get_inventory(defines.inventory.item_active)[1]
           if isValidSlot(active,'empty') then
             blueprint = active
+          else
+            player.print("Active slot of book is not an empty blueprint")
+            player.print("Click with a blueprint-book with an empty active blueprint to load that blueprint into the book")
+            return
           end
         end
       else
@@ -827,6 +888,11 @@ on_gui_click = {
         local status, err = setBlueprintData(player.force, blueprint, blueprintData)
         if status then
           player.print({"msg-blueprint-loaded", "'"..blueprintData.name.."'"})
+          if guiSettings.setCursor and not cursor_stack.valid_for_read then
+            if cursor_stack.set_stack(blueprint) then
+              blueprint.clear()
+            end
+          end
         else
           player.print({"msg-blueprint-notloaded"})
           player.print(err)
@@ -927,6 +993,7 @@ on_gui_click = {
         if guiSettings.rename then
           guiSettings.rename.window.destroy()
           guiSettings.rename = nil
+          return
         end
         guiSettings.rename = GUI.createRenameWindow(player, blueprintIndex, global.blueprints[player.force.name][blueprintIndex].name)
       end
@@ -937,6 +1004,7 @@ on_gui_click = {
         if guiSettings.rename then
           guiSettings.rename.window.destroy()
           guiSettings.rename = nil
+          return
         end
         guiSettings.rename = GUI.createRenameWindow(player, blueprintIndex, global.books[player.force.name][blueprintIndex].name, true)
       end
