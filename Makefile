@@ -1,3 +1,9 @@
+JQ = $(shell which jq 2> /dev/null)
+
+ifeq ($(strip $(JQ)),)
+$(error "jq program is required to parse info.json")
+endif
+
 PACKAGE_NAME := $(shell cat info.json|jq -r .name)
 VERSION_STRING := $(shell cat info.json|jq -r .version)
 

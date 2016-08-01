@@ -37,6 +37,11 @@ graphics/save_icon.jpg made by [Freepik](http://www.freepik.com) from [Flaticon]
 ***
 Changelog
 ---
+0.2.4
+
+- fixed error when no player name is set
+- fixed name being ignored when importing single blueprint string
+
 0.2.3
 
 - added Hotkey to clear blueprint book on the cursor (default Shift + right click, must be enabled in the settings!)

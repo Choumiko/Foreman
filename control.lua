@@ -849,6 +849,7 @@ on_gui_click = {
           return
         end
         local folder = player.name ~= "" and player.name:gsub("[/\\:*?\"<>|]", "_") .."/"
+        folder = (folder and folder ~= "/") and folder or ""
         local filename = "export" .. #data.blueprints .. "_" .. #data.books
         filename = "blueprint-string/" .. folder .. filename .. ".lua"
         game.write_file(filename , stringOutput)
@@ -1049,7 +1050,7 @@ on_gui_click = {
       end
       -- plain blueprintstring, may contain name or not
       if not importString:starts_with("do local") then
-        local inserted = importBlueprintString(player, importString)
+        local inserted = importBlueprintString(player, importString, cleanupName(guiSettings.import.name.text))
         GUI.destroyImportWindow(guiSettings)
         return inserted
       end
