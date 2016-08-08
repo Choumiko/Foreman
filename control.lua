@@ -1056,7 +1056,14 @@ on_gui_click = {
       end
 
       -- "do local" type string, can be from export all or a book
-      local status, result = serpent.load(importString)
+      local status, result, script 
+      if importString:starts_with("do local script") or importString:starts_with("do local foo") then
+        result = assert(loadstring(importString))()
+        status = result
+        script = true
+      else
+        status, result = serpent.load(importString)
+      end
       if not status then
         player.print({"msg-import-blueprint-fail"})
         player.print(result)
@@ -1070,6 +1077,9 @@ on_gui_click = {
         -- exported book
       elseif result.blueprints then
         inserted = importBookFromString(player, result)
+      elseif script then
+        local blueprintString = BlueprintString.toString(result)
+        inserted = addBlueprintToTable(player, blueprintString, result.name)
       end
       GUI.destroyImportWindow(guiSettings)
       return inserted
