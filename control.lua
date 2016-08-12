@@ -517,13 +517,11 @@ function GUI.createImportWindow(player)
   flow.add{type="label", caption={"lbl-blueprint-new-import"}}
   local importString = flow.add{type="textfield", name="blueprintImportText"}
 
-  local unsafe = frame.add{type="checkbox", name="unsafe", caption="allow scripts (unsafe!)", state = false}
-
   flow = frame.add{type="flow", direction="horizontal"}
   flow.add{type="button", name="blueprintImportCancel", caption={"btn-cancel"}}
   flow.add{type="button", name="blueprintImportOk", caption={"btn-import"}}
 
-  return {window = frame, name = name, importString = importString, unsafe = unsafe}
+  return {window = frame, name = name, importString = importString}
 end
 
 function GUI.destroyImportWindow(guiSettings)
