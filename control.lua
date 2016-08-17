@@ -390,7 +390,7 @@ function GUI.createSettingsWindow(player, guiSettings)
     local displayCount = displayCountFlow.add{type="textfield", name="blueprintDisplayCountText", text=guiSettings.displayCount .. ""}
     displayCount.style.minimal_width = 30
     displayCount.tooltip = {"tooltip-blueprint-displayCount"}
-    
+
     local buttonFlow = frame.add{type="flow", direction="horizontal"}
     buttonFlow.add{type="button", name="blueprintSettingsOk", caption={"btn-ok"}, style = "blueprint_button_style"}
     buttonFlow.add{type="button", name="blueprintSettingsCancel", caption={"btn-cancel"}, style = "blueprint_button_style"}
@@ -1054,7 +1054,7 @@ on_gui_click = {
       end
 
       -- "do local" type string, can be from export all or a book
-      local status, result, script 
+      local status, result, script
       if importString:starts_with("do local script") or importString:starts_with("do local foo") then
         result = assert(loadstring(importString))()
         status = result
@@ -1153,5 +1153,6 @@ remote.add_interface("foreman",
       if gui.blueprintWindow ~= nil then
         GUI.createBlueprintWindow(player, global.guiSettings[player.index])
       end
+      sortAllBlueprints(player.force.name)
     end
   })
