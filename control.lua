@@ -1146,4 +1146,12 @@ remote.add_interface("foreman",
     init_buttons = function()
       init_players(true)
     end,
+    addBlueprintToTable = addBlueprintToTable,
+    addBookToTable = addBookToTable,
+    refreshPrintFrame = function(player)
+      local gui = player.gui.left
+      if gui.blueprintWindow ~= nil then
+        GUI.createBlueprintWindow(player, global.guiSettings[player.index])
+      end
+    end
   })
