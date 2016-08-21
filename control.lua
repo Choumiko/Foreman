@@ -531,6 +531,16 @@ function GUI.destroyImportWindow(guiSettings)
   guiSettings.import = false
 end
 
+function GUI.refreshOpened(force)
+  sortAllBlueprints(force.name)
+  for _, p in pairs(force.players) do
+    local guiSettings = global.guiSettings[p.index]
+    if guiSettings and guiSettings.windowVisable then
+      GUI.createBlueprintWindow(p, guiSettings)
+    end
+  end
+end
+
 --write to blueprint
 function setBlueprintData(force, blueprintStack, blueprintData)
   return pcall(function()
@@ -1115,12 +1125,7 @@ on_gui_click = {
         end
         if buttonName and on_gui_click[buttonName] then
           if on_gui_click[buttonName](player, guiSettings, blueprintIndex) then
-            sortAllBlueprints(player.force.name)
-            for _, p in pairs(player.force.players) do
-              if global.guiSettings[p.index].windowVisable then
-                GUI.createBlueprintWindow(p, global.guiSettings[p.index])
-              end
-            end
+            GUI.refreshOpened(player.force)
           end
         end
       end, event_)
@@ -1146,13 +1151,20 @@ remote.add_interface("foreman",
     init_buttons = function()
       init_players(true)
     end,
-    addBlueprintToTable = addBlueprintToTable,
-    addBookToTable = addBookToTable,
-    refreshPrintFrame = function(player)
-      local gui = player.gui.left
-      if gui.blueprintWindow ~= nil then
-        GUI.createBlueprintWindow(player, global.guiSettings[player.index])
+
+    addBlueprint = function(player, blueprintString, name)
+      if addBlueprintToTable(player, blueprintString, name) then
+        GUI.refreshOpened(player.force)
       end
-      sortAllBlueprints(player.force.name)
+    end,
+
+    addBook = function(player, book)
+      if addBookToTable(player, book) then
+        GUI.refreshOpened(player.force)
+      end
+    end,
+
+    refreshGUI = function(player)
+      GUI.refreshOpened(player.force)
     end
   })
