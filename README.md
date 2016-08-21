@@ -44,7 +44,7 @@ Changelog
   remote.call("foreman", "addBlueprint", player, blueprintString, name)  
   remote.call("foreman", "addBook", player, book)  
   remote.call("foreman", "refreshGUI", player)  
-  player: LuaPlayer, blueprintString: compressed Blueprint, name: optional name for the blueprint
+  player: LuaPlayer, blueprintString: compressed Blueprint, name: optional name for the blueprint  
   book: a lua table (export a book via Foreman to see the expected format)
 
 0.2.4
