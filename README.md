@@ -37,6 +37,10 @@ graphics/save_icon.jpg made by [Freepik](http://www.freepik.com) from [Flaticon]
 ***
 Changelog
 ---
+1.0.0
+
+ - version for Factorio 0.14.x
+
 0.2.5
 
  - readded script input. Strings starting with "do local foo" or "do local script" are treated as script input.
