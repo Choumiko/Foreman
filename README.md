@@ -53,6 +53,7 @@ Changelog
  - added Hotkey to toggle the GUI. Ctrl + t by default
  - added option and console command to hide the main button.
  - added console command to change the button order
+ - added russion translation
 
 1.0.0
 
