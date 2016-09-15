@@ -23,6 +23,15 @@ Features
  - Rename blueprints
  - Imports/Exports [Blueprint Strings](https://mods.factorio.com/mods/DaveMcW/blueprint-string)  (Thanks Dave!)
 
+###Hotkeys
+
+ - Toggle the gui: Ctrl + T by default
+ 
+###Console commands:
+ 
+ - Show the main button: /c remote.call("foreman", "show")  
+ - Hide the main button: /c remote.call("foreman", "hide") 
+
 Todo
 ---
 - cleanup the top buttons, only one button to read in strings, one button to add blueprints/books from cursor
@@ -37,6 +46,12 @@ graphics/save_icon.jpg made by [Freepik](http://www.freepik.com) from [Flaticon]
 ***
 Changelog
 ---
+1.0.1/0.2.6
+ 
+ - added option to close the gui after loading a blueprint to the cursor
+ - added Hotkey to toggle the GUI. Ctrl + t by default
+ - added option and console command to hide the main button.
+
 1.0.0
 
  - version for Factorio 0.14.x

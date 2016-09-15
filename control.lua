@@ -34,6 +34,12 @@ local function init_player(player)
   if guiSettings.setCursor == nil then
     guiSettings.setCursor = false
   end
+  if guiSettings.closeGui == nil then
+    guiSettings.closeGui = false
+  end
+  if guiSettings.hideButton == nil then
+    guiSettings.hideButton = false
+  end
 end
 
 function createBlueprintButton(player)
@@ -248,6 +254,9 @@ local function on_configuration_changed(changes)
           end
         end
       end
+      if oldVersion < "1.0.1" then
+        init_players()
+      end
       Game.print_all("Updated Foreman from ".. oldVersion .. " to " .. newVersion)
     end
     global.version = newVersion
@@ -384,6 +393,12 @@ function GUI.createSettingsWindow(player, guiSettings)
     local setCursor = frame.add{type = "checkbox", name = "blueprintSettingSetCursor", caption={"lbl-blueprint-setCursor"}, state = guiSettings.setCursor}
     setCursor.tooltip = {"tooltip-blueprint-setCursor"}
 
+    local closeGui = frame.add{type = "checkbox", name = "blueprintSettingsCloseGui", caption = {"lbl-blueprint-closeGui"}, state = guiSettings.closeGui}
+    closeGui.tooltip = {"tooltip-blueprint-closeGui"}
+
+    local hideButton = frame.add{type = "checkbox", name = "blueprintSettingsHideBUtton", caption = {"lbl-blueprint-hideButton"}, state = guiSettings.hideButton}
+    hideButton.tooltip = {"tooltip-blueprint-hideButton"}
+
     local displayCountFlow = frame.add{type="flow", direction="horizontal" }
     displayCountFlow.add{type="label", caption={"window-blueprint-displaycount"}, tooltip = {"tooltip-blueprint-displayCount"}}
 
@@ -395,7 +410,7 @@ function GUI.createSettingsWindow(player, guiSettings)
     buttonFlow.add{type="button", name="blueprintSettingsOk", caption={"btn-ok"}, style = "blueprint_button_style"}
     buttonFlow.add{type="button", name="blueprintSettingsCancel", caption={"btn-cancel"}, style = "blueprint_button_style"}
 
-    return {overwrite = overwrite, displayCount = displayCount, hotkey = hotkey, setCursor = setCursor}
+    return {overwrite = overwrite, displayCount = displayCount, hotkey = hotkey, setCursor = setCursor, closeGui = closeGui, hideButton = hideButton}
   else
     player.gui.center.blueprintSettingsWindow.destroy()
   end
@@ -828,12 +843,20 @@ on_gui_click = {
           guiSettings.overwrite = guiSettings.windows.overwrite.state
           guiSettings.hotkey = guiSettings.windows.hotkey.state
           guiSettings.setCursor = guiSettings.windows.setCursor.state
+          guiSettings.closeGui = guiSettings.windows.closeGui.state
+          guiSettings.hideButton = guiSettings.windows.hideButton.state
           local newInt = tonumber(guiSettings.windows.displayCount.text) or 1
           newInt = newInt > 0 and newInt or 1
           global.guiSettings[player.index].displayCount = newInt
         end
         player.gui.center.blueprintSettingsWindow.destroy()
         GUI.createBlueprintWindow(player, guiSettings)
+        if guiSettings.hideButton then
+          player.gui.top.foremanFlow.blueprintTools.style.visible = false
+          player.print({"msg-blueprint-hideButton"})
+        else
+          player.gui.top.foremanFlow.blueprintTools.style.visible = true
+        end
       end
     end,
 
@@ -903,6 +926,10 @@ on_gui_click = {
             if cursor_stack.set_stack(blueprint) then
               blueprint.clear()
             end
+          end
+          if guiSettings.closeGui and player.gui.left.blueprintWindow then
+            player.gui.left.blueprintWindow.destroy()
+            return
           end
         else
           player.print({"msg-blueprint-notloaded"})
@@ -1134,6 +1161,14 @@ on_gui_click = {
 }
 script.on_event(defines.events.on_gui_click, on_gui_click.on_gui_click)
 
+local function toggleGui(event_)
+  local _, err = pcall(function(event)
+    on_gui_click.blueprintTools(game.players[event.player_index], global.guiSettings[event.player_index])
+  end, event_)
+  if err then game.players[event_.player_index].print(err) end
+end
+script.on_event("blueprint_toggle_gui", toggleGui)
+
 remote.add_interface("foreman",
   {
     saveVar = function(name)
@@ -1166,5 +1201,19 @@ remote.add_interface("foreman",
 
     refreshGUI = function(player)
       GUI.refreshOpened(player.force)
-    end
+    end,
+
+    show = function()
+      local topGui = game.player.gui.top
+      if topGui.foremanFlow and topGui.foremanFlow.blueprintTools then
+        topGui.foremanFlow.blueprintTools.style.visible = true
+      end
+    end,
+
+    hide = function()
+      local topGui = game.player.gui.top
+      if topGui.foremanFlow and topGui.foremanFlow.blueprintTools then
+        topGui.foremanFlow.blueprintTools.style.visible = false
+      end
+    end,
   })
