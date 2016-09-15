@@ -40,6 +40,9 @@ local function init_player(player)
   if guiSettings.hideButton == nil then
     guiSettings.hideButton = false
   end
+  if not guiSettings.buttonOrder then
+    guiSettings.buttonOrder = {"D", "L", "E", "R"}
+  end
 end
 
 function createBlueprintButton(player)
@@ -416,31 +419,58 @@ function GUI.createSettingsWindow(player, guiSettings)
   end
 end
 
-function GUI.createBlueprintFrameBook(gui, index, caption, countBP)
+function GUI.getBookButton(type, index)
+  if type == "D" then
+    return {type="sprite-button", name=index .. "_blueprintInfoBookDelete", tooltip={"tooltip-blueprint-delete"}, sprite="delete_sprite", style="blueprint_sprite_button"}
+  end
+  if type == "L" then
+    return {type="sprite-button", name=index .. "_blueprintInfoBookLoad", tooltip={"tooltip-blueprint-load"}, sprite="load_book_sprite", style="blueprint_sprite_button"}
+  end
+  if type == "E" then
+    return {type="sprite-button", name=index .. "_blueprintInfoBookExport", tooltip={"tooltip-blueprint-export"}, sprite="save_sprite", style="blueprint_sprite_button"}
+  end
+  if type == "R" then
+    return {type="sprite-button", name=index .. "_blueprintInfoRenameBook", tooltip={"tooltip-blueprint-rename"}, sprite="rename_sprite", style="blueprint_sprite_button"}
+  end
+end
+
+function GUI.createBlueprintFrameBook(gui, index, caption, countBP, guiSettings)
   if not gui then
     return
   end
   local frame = gui.add({type="frame", direction="horizontal", style="blueprint_thin_frame"})
   local buttonFlow = frame.add({type="flow", direction="horizontal", style="blueprint_button_flow"})
-
-  buttonFlow.add({type="sprite-button", name=index .. "_blueprintInfoBookDelete", tooltip={"tooltip-blueprint-delete"}, sprite="delete_sprite", style="blueprint_sprite_button"})
-  buttonFlow.add({type="sprite-button", name=index .. "_blueprintInfoBookLoad", tooltip={"tooltip-blueprint-load"}, sprite="load_book_sprite", style="blueprint_sprite_button"})
-  buttonFlow.add({type="sprite-button", name=index .. "_blueprintInfoBookExport", tooltip={"tooltip-blueprint-export"}, sprite="save_sprite", style="blueprint_sprite_button"})
-  buttonFlow.add({type="sprite-button", name=index .. "_blueprintInfoRenameBook", tooltip={"tooltip-blueprint-rename"}, sprite="rename_sprite", style="blueprint_sprite_button"})
+  for _, type in pairs(guiSettings.buttonOrder) do
+    buttonFlow.add(GUI.getBookButton(type,index))
+  end
   frame.add{type="label", caption=caption, style="blueprint_label_style", tooltip = {"", countBP, " ", {"item-name.blueprint"}}}
 end
 
-function GUI.createBlueprintFrame(gui, index, caption)
+function GUI.getButton(type, index)
+  if type == "D" then
+    return {type="sprite-button", name=index .. "_blueprintInfoDelete", tooltip={"tooltip-blueprint-delete"}, sprite="delete_sprite", style="blueprint_sprite_button"}
+  end
+  if type == "L" then
+    return {type="sprite-button", name=index .. "_blueprintInfoLoad",   tooltip={"tooltip-blueprint-load"},   sprite="load_sprite",   style="blueprint_sprite_button"}
+  end
+  if type == "E" then
+    return {type="sprite-button", name=index .. "_blueprintInfoExport", tooltip={"tooltip-blueprint-export"}, sprite="save_sprite",   style="blueprint_sprite_button"}
+  end
+  if type == "R" then
+    return {type="sprite-button", name=index .. "_blueprintInfoRename", tooltip={"tooltip-blueprint-rename"}, sprite="rename_sprite", style="blueprint_sprite_button"}
+  end
+end
+
+function GUI.createBlueprintFrame(gui, index, caption, guiSettings)
   if not gui then
     return
   end
   local frame = gui.add({type="frame", direction="horizontal", style="blueprint_thin_frame"})
   local buttonFlow = frame.add({type="flow", direction="horizontal", style="blueprint_button_flow"})
 
-  buttonFlow.add({type="sprite-button", name=index .. "_blueprintInfoDelete", tooltip={"tooltip-blueprint-delete"}, sprite="delete_sprite", style="blueprint_sprite_button"})
-  buttonFlow.add({type="sprite-button", name=index .. "_blueprintInfoLoad",   tooltip={"tooltip-blueprint-load"},   sprite="load_sprite",   style="blueprint_sprite_button"})
-  buttonFlow.add({type="sprite-button", name=index .. "_blueprintInfoExport", tooltip={"tooltip-blueprint-export"}, sprite="save_sprite",   style="blueprint_sprite_button"})
-  buttonFlow.add({type="sprite-button", name=index .. "_blueprintInfoRename", tooltip={"tooltip-blueprint-rename"}, sprite="rename_sprite", style="blueprint_sprite_button"})
+  for _, type in pairs(guiSettings.buttonOrder) do
+    buttonFlow.add(GUI.getButton(type,index))
+  end
   frame.add({type="label", caption=caption, style="blueprint_label_style"})
 end
 
@@ -494,11 +524,11 @@ function GUI.createBlueprintWindow(player, guiSettings)
 
   local books = global.books[player.force.name]
   for i, bookData in pairs(books) do
-    GUI.createBlueprintFrameBook(flow, i, bookData.name, #bookData.blueprints)
+    GUI.createBlueprintFrameBook(flow, i, bookData.name, #bookData.blueprints, guiSettings)
   end
   local blueprints = global.blueprints[player.force.name]
   for i,blueprintData in pairs(blueprints) do
-    GUI.createBlueprintFrame(flow, i, blueprintData.name)
+    GUI.createBlueprintFrame(flow, i, blueprintData.name, guiSettings)
   end
   guiSettings.windowVisable = true
   return window
@@ -1214,6 +1244,16 @@ remote.add_interface("foreman",
       local topGui = game.player.gui.top
       if topGui.foremanFlow and topGui.foremanFlow.blueprintTools then
         topGui.foremanFlow.blueprintTools.style.visible = false
+      end
+    end,
+
+    setButtonOrder = function(one, two, three, four)
+      local guiSettings = global.guiSettings[game.player.index]
+      if one and two and three and four then
+        guiSettings.buttonOrder = {one, two, three, four}
+        GUI.refreshOpened(game.player.force)
+      else
+        game.player.print("Invalid arguments")
       end
     end,
   })

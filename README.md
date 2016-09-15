@@ -30,7 +30,8 @@ Features
 ###Console commands:
  
  - Show the main button: /c remote.call("foreman", "show")  
- - Hide the main button: /c remote.call("foreman", "hide") 
+ - Hide the main button: /c remote.call("foreman", "hide")
+ - Change button order for stored blueprints (L,E,R,D stand for Load, Export, Rename, Delete): /c remote.call("foreman", "setButtonOrder", "L", "E", "R", "D")
 
 Todo
 ---
@@ -51,6 +52,7 @@ Changelog
  - added option to close the gui after loading a blueprint to the cursor
  - added Hotkey to toggle the GUI. Ctrl + t by default
  - added option and console command to hide the main button.
+ - added console command to change the button order
 
 1.0.0
 
