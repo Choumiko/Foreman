@@ -31,7 +31,7 @@ Features
  
  - Show the main button: /c remote.call("foreman", "show")  
  - Hide the main button: /c remote.call("foreman", "hide")
- - Change button order for stored blueprints (L,E,R,D stand for Load, Export, Rename, Delete): /c remote.call("foreman", "setButtonOrder", "L", "E", "R", "D")
+ - Change button order for stored blueprints (L,E,R,D stand for Load, Export, Rename, Delete): /c remote.call("foreman", "setButtonOrder", "LERD")
 
 Todo
 ---
@@ -50,7 +50,10 @@ Changelog
 1.0.2
 
  - added support for importing books from blueprintstring format
+ - added textfield to change the button order
+ - changed expected argument of setButtonOrder to a single string: remote.call("foreman", "setButtonOrder", "LERD")
  - fixed GUI opening for all players when someone saves/renames/deletes a blueprint
+ - discontinued updates for the 0.13 version
 
 1.0.1/0.2.6
  

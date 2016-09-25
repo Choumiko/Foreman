@@ -400,8 +400,19 @@ function GUI.createSettingsWindow(player, guiSettings)
     local closeGui = frame.add{type = "checkbox", name = "blueprintSettingsCloseGui", caption = {"lbl-blueprint-closeGui"}, state = guiSettings.closeGui}
     closeGui.tooltip = {"tooltip-blueprint-closeGui"}
 
-    local hideButton = frame.add{type = "checkbox", name = "blueprintSettingsHideBUtton", caption = {"lbl-blueprint-hideButton"}, state = guiSettings.hideButton}
+    local hideButton = frame.add{type = "checkbox", name = "blueprintSettingsHideButton", caption = {"lbl-blueprint-hideButton"}, state = guiSettings.hideButton}
     hideButton.tooltip = {"tooltip-blueprint-hideButton"}
+
+    local order = ""
+    for _, button in pairs(guiSettings.buttonOrder) do
+      order = order .. button
+    end
+    local buttonOrderFlow = frame.add{type = "flow", direction = "horizontal"}
+    buttonOrderFlow.add{type = "label", caption = {"window-blueprint-buttonOrder"}, {"tooltip-blueprint-buttonOrder"}}
+
+    local buttonOrder = frame.add{type = "textfield", name = "blueprintSettingsButtonOrder", text = order}
+    buttonOrder.style.minimal_width = 50
+    buttonOrder.tooltip = {"tooltip-blueprint-buttonOrder"}
 
     local displayCountFlow = frame.add{type="flow", direction="horizontal" }
     displayCountFlow.add{type="label", caption={"window-blueprint-displaycount"}, tooltip = {"tooltip-blueprint-displayCount"}}
@@ -414,7 +425,7 @@ function GUI.createSettingsWindow(player, guiSettings)
     buttonFlow.add{type="button", name="blueprintSettingsOk", caption={"btn-ok"}, style = "blueprint_button_style"}
     buttonFlow.add{type="button", name="blueprintSettingsCancel", caption={"btn-cancel"}, style = "blueprint_button_style"}
 
-    return {overwrite = overwrite, displayCount = displayCount, hotkey = hotkey, setCursor = setCursor, closeGui = closeGui, hideButton = hideButton}
+    return {overwrite = overwrite, displayCount = displayCount, hotkey = hotkey, setCursor = setCursor, closeGui = closeGui, hideButton = hideButton, buttonOrder = buttonOrder}
   else
     player.gui.center.blueprintSettingsWindow.destroy()
   end
@@ -799,6 +810,18 @@ deleteBlueprint = function(player, blueprintIndex, book)
   end
 end
 
+setButtonOrder = function(player, orderString)
+  local order = {}
+  if not string.len(orderString) == 4 then
+    player.print("Invalid order string") --TODO localisation
+  else
+    for c in orderString:gmatch"." do
+      table.insert(order, c)
+    end
+    global.guiSettings[player.index].buttonOrder = order
+  end
+end
+
 on_gui_click = {
 
     blueprintTools = function(player, guiSettings)
@@ -896,6 +919,9 @@ on_gui_click = {
           local newInt = tonumber(guiSettings.windows.displayCount.text) or 1
           newInt = newInt > 0 and newInt or 1
           global.guiSettings[player.index].displayCount = newInt
+
+          local orderString = string.upper(string.trim(guiSettings.windows.buttonOrder.text))
+          setButtonOrder(player, orderString)
         end
         player.gui.center.blueprintSettingsWindow.destroy()
         GUI.createBlueprintWindow(player, guiSettings)
@@ -1266,13 +1292,8 @@ remote.add_interface("foreman",
       end
     end,
 
-    setButtonOrder = function(one, two, three, four)
-      local guiSettings = global.guiSettings[game.player.index]
-      if one and two and three and four then
-        guiSettings.buttonOrder = {one, two, three, four}
-        GUI.refreshOpened(game.player.force)
-      else
-        game.player.print("Invalid arguments")
-      end
+    setButtonOrder = function(orderString)
+      setButtonOrder(game.player, orderString)
+      GUI.refreshOpened(game.player.force)
     end,
   })
