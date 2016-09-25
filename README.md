@@ -49,7 +49,8 @@ Changelog
 ---
 1.0.2
 
- - added support for importing books from blueprintstring format 
+ - added support for importing books from blueprintstring format
+ - fixed GUI opening for all players when someone saves/renames/deletes a blueprint
 
 1.0.1/0.2.6
  

@@ -616,7 +616,9 @@ function setBlueprintData(force, blueprintStack, blueprintData)
         table.insert(newTable, data.icons[i])
       end
     end
-    blueprintStack.blueprint_icons = newTable
+    if #entities > 0 then
+      blueprintStack.blueprint_icons = newTable
+    end
     return true
   end)
 end
@@ -804,6 +806,7 @@ on_gui_click = {
         GUI.createBlueprintWindow(player, global.guiSettings[player.index])
       else
         player.gui.left.blueprintWindow.destroy()
+        guiSettings.windowVisable = false
         if remote.interfaces.YARM and guiSettings.YARM_old_expando then
           remote.call("YARM", "show_expando", player.index)
         end
