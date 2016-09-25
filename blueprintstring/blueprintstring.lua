@@ -1,65 +1,55 @@
 --[[
-
-
 Blueprint String
-
-
-
-
+Copyright (c) 2016 David McWilliams, MIT License
 
 This library helps you convert blueprints to text strings, and text strings to blueprints.
 
 
-
-
-
 Saving Blueprints
-
-
 -----------------
-
-
 local BlueprintString = require "blueprintstring.blueprintstring"
-
-
-local blueprint_table = {}
-
-
-blueprint_table.icons = blueprint.blueprint_icons
-
-
-blueprint_table.entities = blueprint.get_blueprint_entities()
-
-
-blueprint_table.myfield = "Add some extra fields if you want"
-
-
+local blueprint_table = {
+  entities = blueprint.get_blueprint_entities(),
+  tiles = blueprint.get_blueprint_tiles(),
+  icons = blueprint.blueprint_icons,
+  name = blueprint.label,
+  myfield = "Add some extra fields if you want",
+}
 local str = BlueprintString.toString(blueprint_table)
 
 
-
-
-
 Loading Blueprints
-
-
 ------------------
-
-
 local BlueprintString = require "blueprintstring.blueprintstring"
-
-
 local blueprint_table = BlueprintString.fromString(str)
-
-
 blueprint.set_blueprint_entities(blueprint_table.entities)
-
-
+blueprint.set_blueprint_tiles(blueprint_table.tiles)
 blueprint.blueprint_icons = blueprint_table.icons
+blueprint.label = blueprint_table.name or ""
 
 
+Blueprint Books
+------------------
+A blueprint book is stored in the book field.
+The active blueprint is index 1, other blueprints start from index 2.
 
-
+local blueprint_table = {
+  name = "Label for blueprint book",
+  book = {
+    [1] = {
+      entities = active_inventory[1].get_blueprint_entities(),
+      icons = active_inventory[1].blueprint_icons,
+    },
+    [2] = {
+      entities = main_inventory[1].get_blueprint_entities(),
+      icons = main_inventory[1].blueprint_icons,
+    },
+    [3] = {
+      entities = main_inventory[2].get_blueprint_entities(),
+      icons = main_inventory[2].blueprint_icons,
+    },
+  }
+}
 
 ]]--
 
@@ -72,7 +62,7 @@ function trim(s)
   return (s:gsub("^%s*(.-)%s*$", "%1"))
 end
 
-function item_count(t)
+function item_count(t) 
   local count = 0
   if (#t >= 2) then return 2 end
   for k,v in pairs(t) do count = count + 1 end
@@ -86,27 +76,29 @@ function fix_entities(array)
   for _, entity in ipairs(array) do
     if (type(entity) == 'table') then
       -- Factorio 0.12 format
-      if (entity.conditions and type(entity.conditions == 'table')) then
+      if (entity.conditions and type(entity.conditions) == 'table') then
         if (entity.conditions.circuit) then
           entity.control_behavior = {circuit_condition = entity.conditions.circuit}
-          entity.conditions.circuit = nil
         end
         if (entity.conditions.arithmetic) then
-          entity.control_behavior = entity.control_behavior or {}
-          entity.control_behavior.arithmetic_conditions = entity.conditions.arithmetic
-          entity.conditions.arithmetic = nil
+          entity.control_behavior = {arithmetic_conditions = entity.conditions.arithmetic}
         end
         if (entity.conditions.decider) then
-          entity.control_behavior = entity.control_behavior or {}
-          entity.control_behavior.decider_conditions = entity.conditions.decider
-          entity.conditions.decider = nil
+          entity.control_behavior = {decider_conditions = entity.conditions.decider}
         end
-        entity.conditions = nil
       end
-      if entity.filters and game.entity_prototypes[entity.name] and game.entity_prototypes[entity.name].type == "constant-combinator" then
-        entity.control_behavior = entity.control_behavior or {}
-        entity.control_behavior.filters = entity.filters
-        entity.filters = nil
+      if (entity.name == "constant-combinator" and entity.filters) then
+        entity.control_behavior = {filters = entity.filters}
+      end
+
+      -- Factorio 0.13 format
+      if (entity.name == "constant-combinator" and entity.control_behavior and type(entity.control_behavior) == 'table' and entity.control_behavior.filters and type(entity.control_behavior.filters) == 'table') then
+        for _, filter in pairs(entity.control_behavior.filters) do
+          local uint32 = tonumber(filter.count)
+          if (uint32 and uint32 >= 2147483648 and uint32 < 4294967296) then
+            filter.count = uint32 - 4294967296
+          end
+        end
       end
 
       -- Add entity number
@@ -141,6 +133,11 @@ function fix_icons(array)
   return icons
 end
 
+function fix_name(name)
+  if (not name or type(name) ~= "string") then return nil end
+  return name:sub(1,100)
+end
+
 function remove_useless_fields(entities)
   if (not entities or type(entities) ~= "table") then return end
   for _, entity in ipairs(entities) do
@@ -148,7 +145,7 @@ function remove_useless_fields(entities)
 
     -- Entity_number is calculated in fix_entities()
     entity.entity_number = nil
-
+    
     if (item_count(entity) == 0) then entity = nil end
   end
 end
@@ -163,16 +160,25 @@ M.LINE_LENGTH = 120  -- Length of lines in compressed string. 0 means unlimited 
 
 M.toString = function(blueprint_table)
   remove_useless_fields(blueprint_table.entities)
-  local str = serpent.dump(blueprint_table)
+  blueprint_table.name = fix_name(blueprint_table.name)
+  if (blueprint_table.book) then
+    for _, page in pairs(blueprint_table.book) do
+      remove_useless_fields(page.entities)
+      page.name = fix_name(page.name)
+    end   
+  end
+  
+  local data = serpent.dump(blueprint_table)
   if (M.COMPRESS_STRINGS) then
-    str = deflate.gzip(str)
-    str = base64.enc(str)
+    data = deflate.gzip(data)
+    data = base64.enc(data)
     if (M.LINE_LENGTH > 0) then
-      str = str:gsub( ("%S"):rep(M.LINE_LENGTH), "%1\n" )
+      -- Add line breaks
+      data = data:gsub( ("%S"):rep(M.LINE_LENGTH), "%1\n" )
     end
   end
-  str = str .. "\n"
-  return str
+  data = data .. "\n"
+  return data
 end
 
 M.fromString = function(data)
@@ -199,19 +205,19 @@ M.fromString = function(data)
     ["basic-exoskeleton-equipment"] = "exoskeleton-equipment",
     ["basic-grenade"] = "grenade",
     ["basic-inserter"] = "inserter",
+    ["basic-laser-defense-equipment"] = "personal-laser-defense-equipment",
     ["basic-mining-drill"] = "electric-mining-drill",
     ["basic-modular-armor"] = "modular-armor",
-    ["basic-laser-defense-equipment"] = "personal-laser-defense-equipment",
+    ["basic-splitter"] = "splitter",
     ["basic-transport-belt"] = "transport-belt",
     ["basic-transport-belt-to-ground"] = "underground-belt",
-    ["basic-splitter"] = "splitter",
     ["express-transport-belt-to-ground"] = "express-underground-belt",
     ["fast-transport-belt-to-ground"] = "fast-underground-belt",
     ["piercing-bullet-magazine"] = "piercing-rounds-magazine",
     ["smart-chest"] = "steel-chest",
     ["smart-inserter"] = "filter-inserter",
   })
-
+    
   local status, result = serpent.load(data)
   if (not status) then
     --game.player.print(result)
@@ -220,7 +226,15 @@ M.fromString = function(data)
 
   result.entities = fix_entities(result.entities)
   result.icons = fix_icons(result.icons)
-
+  result.name = fix_name(result.name)
+  if (result.book) then
+    for _, page in pairs(result.book) do
+      page.entities = fix_entities(page.entities)
+      page.icons = fix_icons(page.icons)
+      page.name = fix_name(page.name)
+    end   
+  end
+  
   return result
 end
 
