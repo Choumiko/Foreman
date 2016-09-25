@@ -103,6 +103,7 @@ addNametoBlueprintString = function(blueprintString, name)
   return BlueprintString.toString(tmp)
 end
 
+
 --removeNameFromBlueprintString = function(blueprintString)
 --  local tmp = BlueprintString.fromString(blueprintString)
 --  local name = tmp.name
@@ -743,11 +744,25 @@ addBookToTable = function(player, book)
 end
 
 importBlueprintString = function(player, importString, name)
-  --  log("importBlueprintString")
+  --log("importBlueprintString")
   --  log(importString)
   --  local data, name = removeNameFromBlueprintString(importString)
   --  log(data)
-  return addBlueprintToTable(player, importString, name)
+  local data = BlueprintString.fromString(importString)
+  if data.book then
+    log("Blueprintstring book")
+    log(serpent.block(data,{comment=false}))
+    local blueprints = {}
+    for _, page in pairs(data.book) do
+      table.insert(blueprints, {data = BlueprintString.toString(page), name = page.name})
+    end
+    local tmp = {}
+    tmp.name = data.name or name
+    tmp.blueprints = blueprints
+    return addBookToTable(player, tmp)
+  else
+    return addBlueprintToTable(player, importString, name)
+  end
 end
 
 importBookFromString = function(player, data, name)
@@ -1022,6 +1037,7 @@ on_gui_click = {
             for n, newBP in pairs(book.blueprints) do
               if not duplicates[n] and newBP then
                 local status, err = pcall(function() setBlueprintData(player.force, empty[writeIndex], newBP) end )
+                newBP.name = newBP.name or ""
                 if status then
                   player.print({"msg-blueprint-loaded", "'" .. newBP.name .. "'"})
                   writeIndex = writeIndex + 1

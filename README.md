@@ -47,13 +47,17 @@ graphics/save_icon.jpg made by [Freepik](http://www.freepik.com) from [Flaticon]
 ***
 Changelog
 ---
+1.0.2
+
+ - added support for importing books from blueprintstring format 
+
 1.0.1/0.2.6
  
  - added option to close the gui after loading a blueprint to the cursor
  - added Hotkey to toggle the GUI. Ctrl + t by default
  - added option and console command to hide the main button.
  - added console command to change the button order
- - added russion translation
+ - added russian translation
 
 1.0.0
 
