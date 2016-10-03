@@ -306,6 +306,18 @@ isValidSlot = function(slot, state)
   return true
 end
 
+getBlueprintOnCursor = function (player)
+  local stack = player.cursor_stack
+  if stack.valid_for_read then
+    if (stack.type == "blueprint" and isValidSlot(stack, 'setup')) then
+      return stack
+    elseif (stack.type == "blueprint-book" and isValidSlot(stack.get_inventory(defines.inventory.item_active)[1], 'setup')) then
+      return stack.get_inventory(defines.inventory.item_active)[1]
+    end
+  end
+  return false
+end
+
 function clearBlueprintBook(event_)
   local _, err = pcall(function(event)
     local player = game.players[event.player_index]
@@ -514,6 +526,13 @@ function GUI.createBlueprintWindow(player, guiSettings)
   buttons.add({type="button", name="blueprintExportAll", tooltip={"tooltip-blueprint-export-all"}, caption="E", style="blueprint_button_style"})
   buttons.add({type="button", name="blueprintImportAll", tooltip={"tooltip-blueprint-import-all"}, caption="L", style="blueprint_button_style"})
   buttons.add({type="sprite-button", name="blueprintSettings", tooltip={"window-blueprint-settings"}, sprite="settings_sprite", style="blueprint_sprite_button"})
+
+  local tools = window.add({type="frame", direction="horizontal", style="blueprint_thin_frame"})
+
+  tools.add({type = "button", name = "blueprintToolMirrorH", caption = "H", tooltip = "Mirror horizontaly", style = "blueprint_button_style"})
+  tools.add({type = "button", name = "blueprintToolMirrorV", caption = "V", tooltip = "Mirror verticaly", style = "blueprint_button_style"})
+  --tools.add({type = "button", name = "blueprintToolMoveUp", caption = "U", tooltip = "Move up 2 tiles", style = "blueprint_button_style"})
+  --tools.add({type = "button", name = "blueprintToolMoveRight", caption = "R", tooltip = "Move right 2 tiles", style = "blueprint_button_style"})
 
   local frame = window.add({type="frame", direction="vertical"})
   frame.style.left_padding = 0
@@ -820,6 +839,44 @@ setButtonOrder = function(player, orderString)
     end
     global.guiSettings[player.index].buttonOrder = order
   end
+end
+
+function mirror(entities, axis)
+  local curves, others, stops, signals
+  if axis == 'x' then
+    curves = 9
+    others = 16
+    signals = 4
+    stops = {[0] = true, [4] = true}
+  else
+    curves = 13
+    others = 12
+    signals = 8
+    stops = {[2] = true, [6] = true}
+  end
+  
+  --local abs = math.abs
+  for _,ent in pairs(entities) do
+    local entType = game.entity_prototypes[ent.name] and game.entity_prototypes[ent.name].type
+    ent.direction = ent.direction or 0
+    if entType == "curved-rail" then
+      ent.direction = (curves - ent.direction) % 8
+    elseif entType == "rail-signal" or entType == "rail-chain-signal" then
+      --ent.direction = abs((signals + ent.direction) % -8)
+      ent.direction = (signals - ent.direction) % 8
+    elseif entType == "train-stop" then
+      if stops[ent.direction] then
+        ent.direction = (ent.direction + 4) % 8
+      end
+      --TODO fix proxy positions for SmartTrainstops (collect them along with entity_number of trainstop)
+    elseif entType == "storage-tank" then
+      ent.direction = (6 + ent.direction) % 8
+    else
+      ent.direction = (others - ent.direction) % 8
+    end
+    ent.position[axis] = -1 * ent.position[axis]
+  end
+  return entities
 end
 
 on_gui_click = {
@@ -1212,6 +1269,26 @@ on_gui_click = {
 
     blueprintInfoBookDelete = function(player, _, blueprintIndex)
       return deleteBlueprint(player,blueprintIndex, true)
+    end,
+
+    blueprintToolMirrorH = function(player, _, _)
+      local blueprint = getBlueprintOnCursor(player)
+      if blueprint then
+        local bpEntities = blueprint.get_blueprint_entities()
+        blueprint.set_blueprint_entities(mirror(bpEntities, 'x'))
+      else
+        player.print("Click this button with a blueprint or book with an active blueprint to mirror it")
+      end
+    end,
+    
+    blueprintToolMirrorV = function(player, _, _)
+      local blueprint = getBlueprintOnCursor(player)
+      if blueprint then
+        local bpEntities = blueprint.get_blueprint_entities()
+        blueprint.set_blueprint_entities(mirror(bpEntities, 'y'))
+      else
+        player.print("Click this button with a blueprint or book with an active blueprint to mirror it")
+      end
     end,
 
     on_gui_click = function(event_)
