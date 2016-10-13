@@ -842,39 +842,93 @@ setButtonOrder = function(player, orderString)
 end
 
 function mirror(entities, axis)
-  local curves, others, stops, signals
-  if axis == 'x' then
-    curves = 9
-    others = 16
-    signals = 4
-    stops = {[0] = true, [4] = true}
-  else
+  local curves, others, stops, signals, tanks = 9, 0, 4, 4, 2
+  --  if axis == 'x' then
+  --    curves = 9
+  --    others = 0
+  --    signals = 4
+  --    stops = 4
+  --  else
+  if axis == 'y' then
     curves = 13
-    others = 12
+    others = 4
     signals = 8
-    stops = {[2] = true, [6] = true}
+    stops = 8
   end
-  
-  --local abs = math.abs
-  for _,ent in pairs(entities) do
+  local smartTrains = remote.interfaces.st and remote.interfaces.st.getProxyPositions
+  local smartStops = {["smart-train-stop-proxy"] = {}, ["smart-train-stop-proxy-cargo"] = {}}
+  local smartSignal = {}
+  local smartCargo = {}
+  local proxyKeys = function(trainStop)
+    local proxies = remote.call("st", "getProxyPositions", trainStop)
+    local signal = proxies.signalProxy.x .. ":" .. proxies.signalProxy.y
+    local cargo = proxies.cargo.x .. ":" .. proxies.cargo.y
+    return {signal = signal, cargo = cargo}
+  end
+
+  for i, ent in pairs(entities) do
     local entType = game.entity_prototypes[ent.name] and game.entity_prototypes[ent.name].type
     ent.direction = ent.direction or 0
     if entType == "curved-rail" then
       ent.direction = (curves - ent.direction) % 8
     elseif entType == "rail-signal" or entType == "rail-chain-signal" then
-      --ent.direction = abs((signals + ent.direction) % -8)
       ent.direction = (signals - ent.direction) % 8
     elseif entType == "train-stop" then
-      if stops[ent.direction] then
-        ent.direction = (ent.direction + 4) % 8
+      if ent.name == "smart-train-stop" and smartTrains then
+        local proxies = proxyKeys(ent)
+        smartStops["smart-train-stop-proxy"][proxies.signal] = {old = {direction = ent.direction, position = Position.copy(ent.position)}}
+        smartStops["smart-train-stop-proxy-cargo"][proxies.cargo] = {old = {direction = ent.direction, position = Position.copy(ent.position)}}
+        ent.direction = (stops - ent.direction) % 8
+        smartStops["smart-train-stop-proxy"][proxies.signal].new = ent
+        smartStops["smart-train-stop-proxy-cargo"][proxies.cargo].new = ent
+      else
+        ent.direction = (stops - ent.direction) % 8
       end
-      --TODO fix proxy positions for SmartTrainstops (collect them along with entity_number of trainstop)
     elseif entType == "storage-tank" then
-      ent.direction = (6 + ent.direction) % 8
+      ent.direction = (tanks + ent.direction) % 8
+    elseif entType == "lamp" and ent.name == "smart-train-stop-proxy" then
+      ent.direction = 0
+      table.insert(smartSignal, {entity = {name=ent.name, position = Position.copy(ent.position)}, i = i})
+    elseif entType == "constant-combinator" and ent.name == "smart-train-stop-proxy-cargo" then
+      ent.direction = 0
+      table.insert(smartCargo, {entity = {name=ent.name, position = Position.copy(ent.position)}, i = i})
     else
       ent.direction = (others - ent.direction) % 8
     end
+
     ent.position[axis] = -1 * ent.position[axis]
+
+    if ent.drop_position then
+      ent.drop_position[axis] = -1 * ent.drop_position[axis]
+    end
+    if ent.pickup_position then
+      ent.pickup_position[axis] = -1 * ent.pickup_position[axis]
+    end
+  end
+
+  for _, data in pairs(smartSignal) do
+    local proxy = data.entity
+    local stop = smartStops[proxy.name][proxy.position.x .. ":" .. proxy.position.y]
+    if stop then
+      local newPositions = remote.call("st", "getProxyPositions", stop.new)
+      entities[data.i].position = newPositions.signalProxy
+    else
+      log("No proxy found")
+      log(proxy.position.x .. ":" .. proxy.position.y)
+      log(serpent.block(smartStops,{comment=false}))
+    end
+  end
+  for _, data in pairs(smartCargo) do
+    local proxy = data.entity
+    local stop = smartStops[proxy.name][proxy.position.x .. ":" .. proxy.position.y]
+    if stop then
+      local newPositions = remote.call("st", "getProxyPositions", stop.new)
+      entities[data.i].position = newPositions.cargo
+    else
+      log("No proxy found")
+      log(proxy.position.x .. ":" .. proxy.position.y)
+      log(serpent.block(smartStops,{comment=false}))
+    end
   end
   return entities
 end
@@ -1280,7 +1334,7 @@ on_gui_click = {
         player.print("Click this button with a blueprint or book with an active blueprint to mirror it")
       end
     end,
-    
+
     blueprintToolMirrorV = function(player, _, _)
       local blueprint = getBlueprintOnCursor(player)
       if blueprint then

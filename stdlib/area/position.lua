@@ -1,9 +1,29 @@
 --- Position module
--- @module position
+-- @module Position
 
 Position = {}
 
 require 'stdlib/core'
+
+
+--- Creates a table representing the position from x and y
+-- @param x x-position
+-- @param y y-position
+-- @return Position
+function Position.construct(x, y)
+    fail_if_missing(x, "missing x position argument")
+    fail_if_missing(y, "missing y position argument")
+    return { x = x, y = y }
+end
+
+--- Creates a position that is a copy of the given position
+-- @param pos the position to copy
+-- @return Position
+function Position.copy(pos)
+    fail_if_missing(pos, "missing position argument")
+    pos = Position.to_table(pos)
+    return { x = pos.x, y = pos.y }
+end
 
 --- Creates a position that is offset by x,y coordinate pair
 -- @param pos the position to offset
@@ -130,6 +150,33 @@ function Position.manhattan_distance(pos1, pos2)
     pos2 = Position.to_table(pos2)
 
     return math.abs(pos2.x - pos1.x) + math.abs(pos2.y - pos1.y)
+end
+
+-- see: https://en.wikipedia.org/wiki/Machine_epsilon
+Position._epsilon = 1.19e-07
+
+--- Whether 2 positions are equal
+-- @param pos1 the first position
+-- @param pos2 the second position
+-- @return true if positions are equal
+function Position.equals(pos1, pos2)
+    if not pos1 or not pos2 then return false end
+    -- optimize for a shallow equality check first
+    if pos1 == pos2 then return true end
+
+    local epsilon = Position._epsilon
+    local abs = math.abs
+    if #pos1 == 2 and #pos2 == 2 then
+        return abs(pos1[1] - pos2[1]) < epsilon and abs(pos1[2] - pos2[2]) < epsilon
+    elseif #pos1 == 2 and #pos2 == 0 then
+        return abs(pos1[1] - pos2.x) < epsilon and abs(pos1[2] - pos2.y) < epsilon
+    elseif #pos1 == 0 and #pos2 == 2 then
+        return abs(pos1.x - pos2[1]) < epsilon and abs(pos1.y - pos2[2]) < epsilon
+    elseif #pos1 == 0 and #pos2 == 0 then
+        return abs(pos1.x - pos2.x) < epsilon and abs(pos1.y - pos2.y) < epsilon
+    end
+
+    return false
 end
 
 --- Converts a position in the array format to a position in the table format
