@@ -530,6 +530,14 @@ function GUI.createBlueprintWindow(player, guiSettings)
   local tools = window.add({type="frame", direction="horizontal", style="blueprint_thin_frame"})
 
   tools.add({type = "sprite-button", name="blueprintToolMirror", tooltip = "Mirror blueprint", sprite = "mirror_sprite", style = "blueprint_sprite_button"})
+  tools.add({type = "label", caption = "Replace"})
+  local search = tools.add({type = "sprite-button", name = "blueprintToolSearch", tooltip = "Entity to replace", style = "blueprint_sprite_button"})
+  search.sprite = guiSettings.search and "item/"..guiSettings.search or ""
+
+  tools.add({type = "label", caption = "with"})
+  local replace = tools.add({type = "sprite-button", name = "blueprintToolReplace", tooltip = "Entity to insert", style = "blueprint_sprite_button"})
+  replace.sprite = guiSettings.replace and "item/" .. guiSettings.replace or ""
+  tools.add({type = "button", name = "blueprintToolReplaceOk", caption = "Ok", style = "blueprint_button_style"})
 
   --tools.add({type = "button", name = "blueprintToolMoveUp", caption = "U", tooltip = "Move up 2 tiles", style = "blueprint_button_style"})
   --tools.add({type = "button", name = "blueprintToolMoveRight", caption = "R", tooltip = "Move right 2 tiles", style = "blueprint_button_style"})
@@ -933,6 +941,11 @@ function mirror(entities, axis)
   return entities
 end
 
+local function getEntityNameFromItem(item)
+  local itemProto = game.item_prototypes[item.name]
+  return itemProto.place_result and itemProto.place_result.name  or false
+end
+
 on_gui_click = {
 
     blueprintTools = function(player, guiSettings)
@@ -1132,74 +1145,79 @@ on_gui_click = {
     blueprintInfoBookLoad = function(player, _, blueprintIndex)
       local cursor_stack = player.cursor_stack
       local book = global.books[player.force.name][blueprintIndex]
-      if book and cursor_stack and cursor_stack.valid_for_read and cursor_stack.type == "blueprint-book" then
-        local count = #book.blueprints
-        local active = cursor_stack.get_inventory(defines.inventory.item_active)
-        local main = cursor_stack.get_inventory(defines.inventory.item_main)
-        local countBookBlueprints = main.get_item_count("blueprint") + active.get_item_count("blueprint")
-        active = active[1]
-
-        if countBookBlueprints >= count then
-          local empty = {}
-          local setup = {}
-          local emptyCount = 0
-          if isValidSlot(active,'empty') then
-            table.insert(empty, active)
-            emptyCount = emptyCount + 1
-          end
-          if isValidSlot(active, "setup") then
-            table.insert(setup, active)
-          end
-          for i=1, #main do
-            if isValidSlot(main[i],'empty') then
-              table.insert(empty, main[i])
-              emptyCount = emptyCount + 1
-            end
-            if isValidSlot(main[i], "setup") then
-              table.insert(setup, main[i])
-            end
-          end
-          local duplicateCount = 0
-          local duplicates = {}
-          local needed = count - emptyCount
-          for _, blueprintOld in pairs(setup) do
-            local oldEntities = getBlueprintData(blueprintOld).entities
-            for n, blueprintNew in pairs(book.blueprints) do
-              if util.table.compare(oldEntities, BlueprintString.fromString(blueprintNew.data).entities) then
-                duplicates[n] = true
-                duplicateCount = duplicateCount + 1
-              end
-            end
-          end
-          needed = needed - duplicateCount
-          local writeIndex = 1
-          if needed < 1 then
-            for n, newBP in pairs(book.blueprints) do
-              if not duplicates[n] and newBP then
-                local status, err = pcall(function() setBlueprintData(player.force, empty[writeIndex], newBP) end )
-                newBP.name = newBP.name or ""
-                if status then
-                  player.print({"msg-blueprint-loaded", "'" .. newBP.name .. "'"})
-                  writeIndex = writeIndex + 1
-                else
-                  player.print({"msg-blueprint-notloaded"})
-                  player.print(err)
-                end
-              end
-              if duplicates[n] then
-                player.print("Skipped loading duplicate " .. newBP.name)
-              end
-            end
-            cursor_stack.label = book.name
-          else
-            player.print("Not enough blueprints in the book. Need " .. needed .. " more") --TODO localisation
-            return
-          end
-        else
-          player.print("Not enough blueprints in the book. Need " .. count - countBookBlueprints .. " more") --TODO localisation
+      if book and cursor_stack and cursor_stack.valid_for_read then
+        if cursor_stack.type == "blueprint" then
+          player.print("Trying to load a blueprint book with a blueprint on the cursor.")
           return
         end
+        if cursor_stack.type == "blueprint-book" then
+          local count = #book.blueprints
+          local active = cursor_stack.get_inventory(defines.inventory.item_active)
+          local main = cursor_stack.get_inventory(defines.inventory.item_main)
+          local countBookBlueprints = main.get_item_count("blueprint") + active.get_item_count("blueprint")
+          active = active[1]
 
+          if countBookBlueprints >= count then
+            local empty = {}
+            local setup = {}
+            local emptyCount = 0
+            if isValidSlot(active,'empty') then
+              table.insert(empty, active)
+              emptyCount = emptyCount + 1
+            end
+            if isValidSlot(active, "setup") then
+              table.insert(setup, active)
+            end
+            for i=1, #main do
+              if isValidSlot(main[i],'empty') then
+                table.insert(empty, main[i])
+                emptyCount = emptyCount + 1
+              end
+              if isValidSlot(main[i], "setup") then
+                table.insert(setup, main[i])
+              end
+            end
+            local duplicateCount = 0
+            local duplicates = {}
+            local needed = count - emptyCount
+            for _, blueprintOld in pairs(setup) do
+              local oldEntities = getBlueprintData(blueprintOld).entities
+              for n, blueprintNew in pairs(book.blueprints) do
+                if util.table.compare(oldEntities, BlueprintString.fromString(blueprintNew.data).entities) then
+                  duplicates[n] = true
+                  duplicateCount = duplicateCount + 1
+                end
+              end
+            end
+            needed = needed - duplicateCount
+            local writeIndex = 1
+            if needed < 1 then
+              for n, newBP in pairs(book.blueprints) do
+                if not duplicates[n] and newBP then
+                  local status, err = pcall(function() setBlueprintData(player.force, empty[writeIndex], newBP) end )
+                  newBP.name = newBP.name or ""
+                  if status then
+                    player.print({"msg-blueprint-loaded", "'" .. newBP.name .. "'"})
+                    writeIndex = writeIndex + 1
+                  else
+                    player.print({"msg-blueprint-notloaded"})
+                    player.print(err)
+                  end
+                end
+                if duplicates[n] then
+                  player.print("Skipped loading duplicate " .. newBP.name)
+                end
+              end
+              cursor_stack.label = book.name
+            else
+              player.print("Not enough blueprints in the book. Need " .. needed .. " more") --TODO localisation
+              return
+            end
+          else
+            player.print("Not enough blueprints in the book. Need " .. count - countBookBlueprints .. " more") --TODO localisation
+            return
+          end
+        end
       end
       return true
     end,
@@ -1335,6 +1353,46 @@ on_gui_click = {
       end
     end,
 
+    blueprintToolSearch = function(player, guiSettings, _, element)
+      local stack = player.cursor_stack.valid_for_read and player.cursor_stack or false
+      local search = stack and getEntityNameFromItem(stack)
+      if search then
+        element.sprite = "item/" .. stack.name
+      else
+        element.sprite = ""
+      end
+      guiSettings.search = search
+    end,
+
+    blueprintToolReplace = function(player, guiSettings, _, element)
+      local stack = player.cursor_stack.valid_for_read and player.cursor_stack or false
+      local replace = stack and getEntityNameFromItem(stack)
+      if replace then
+        element.sprite = "item/" .. stack.name
+      else
+        element.sprite = ""
+      end
+      guiSettings.replace = replace
+    end,
+
+    blueprintToolReplaceOk = function(player, guiSettings)
+      local blueprint = getBlueprintOnCursor(player)
+      if not blueprint then
+        player.print("Click this button with a blueprint or book with an active blueprint to replace entities")
+        return
+      end
+      local s, r = guiSettings.search, guiSettings.replace
+      if s and r then
+        local bpEntities = blueprint.get_blueprint_entities()
+        for _, entity in pairs(bpEntities) do
+          if entity.name == s then
+            entity.name = r
+          end
+        end
+        blueprint.set_blueprint_entities(bpEntities)
+      end
+    end,
+
     on_gui_click = function(event_)
       local _, err = pcall(function(event)
         local player = game.players[event.element.player_index]
@@ -1347,7 +1405,7 @@ on_gui_click = {
           return
         end
         if buttonName and on_gui_click[buttonName] then
-          if on_gui_click[buttonName](player, guiSettings, blueprintIndex) then
+          if on_gui_click[buttonName](player, guiSettings, blueprintIndex, event.element) then
             GUI.refreshOpened(player.force)
           end
         end

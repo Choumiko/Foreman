@@ -14,6 +14,12 @@ Features
  - Fix positions in blueprints
  - Export all stored blueprints/books (E button)
  - Load multiple blueprints/books (L button)
+ 
+###Toolbar:
+
+ - Mirror blueprint / active blueprint in book on the cursor (mirroring along the other axis: mirror and rotate by 180°)  
+ Works with [Side Inserters](https://mods.factorio.com/mods/GotLag/Side Inserters), [Bob's Adjustable Inserters](https://mods.factorio.com/mods/Bobingabout/bobinserters), Trainstops from [SmartTrains](https://mods.factorio.com/mods/Choumiko/SmartTrains)
+ - Replace entities in the blueprint with another one: Click the empty buttons with an item on the cursor. Click "Ok" with a blueprint/book to replace.
 
 ###Per blueprint/book buttons
 
@@ -47,6 +53,11 @@ graphics/save_icon.jpg made by [Freepik](http://www.freepik.com) from [Flaticon]
 ***
 Changelog
 ---
+1.1.0
+
+ - added button to mirror blueprint/ active blueprint in a book (mirroring along the other axis is just mirroring and rotating by 180°)
+ - added buttons to replace an entity with another one (to upgrade belts, assemblers, etc)
+
 1.0.2
 
  - added support for importing books from blueprintstring format
