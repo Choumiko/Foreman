@@ -108,6 +108,14 @@ data:extend({
     width = 128,
     height = 128,
   },
+  {
+    type="sprite",
+    name="mirror_sprite",
+    filename = "__Foreman__/graphics/mirror_icon.png",
+    priority = "extra-high-no-scale",
+    width = 64,
+    height = 64,
+  },
 
 })
 

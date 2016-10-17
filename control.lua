@@ -529,8 +529,8 @@ function GUI.createBlueprintWindow(player, guiSettings)
 
   local tools = window.add({type="frame", direction="horizontal", style="blueprint_thin_frame"})
 
-  tools.add({type = "button", name = "blueprintToolMirrorH", caption = "H", tooltip = "Mirror horizontaly", style = "blueprint_button_style"})
-  tools.add({type = "button", name = "blueprintToolMirrorV", caption = "V", tooltip = "Mirror verticaly", style = "blueprint_button_style"})
+  tools.add({type = "sprite-button", name="blueprintToolMirror", tooltip = "Mirror blueprint", sprite = "mirror_sprite", style = "blueprint_sprite_button"})
+
   --tools.add({type = "button", name = "blueprintToolMoveUp", caption = "U", tooltip = "Move up 2 tiles", style = "blueprint_button_style"})
   --tools.add({type = "button", name = "blueprintToolMoveRight", caption = "R", tooltip = "Move right 2 tiles", style = "blueprint_button_style"})
 
@@ -1325,21 +1325,11 @@ on_gui_click = {
       return deleteBlueprint(player,blueprintIndex, true)
     end,
 
-    blueprintToolMirrorH = function(player, _, _)
+    blueprintToolMirror = function(player, _, _)
       local blueprint = getBlueprintOnCursor(player)
       if blueprint then
         local bpEntities = blueprint.get_blueprint_entities()
         blueprint.set_blueprint_entities(mirror(bpEntities, 'x'))
-      else
-        player.print("Click this button with a blueprint or book with an active blueprint to mirror it")
-      end
-    end,
-
-    blueprintToolMirrorV = function(player, _, _)
-      local blueprint = getBlueprintOnCursor(player)
-      if blueprint then
-        local bpEntities = blueprint.get_blueprint_entities()
-        blueprint.set_blueprint_entities(mirror(bpEntities, 'y'))
       else
         player.print("Click this button with a blueprint or book with an active blueprint to mirror it")
       end
@@ -1405,26 +1395,30 @@ remote.add_interface("foreman",
       end
     end,
 
-    refreshGUI = function(player)
+    refreshGUI = function(p)
+      local player = p or game.player
       GUI.refreshOpened(player.force)
     end,
 
-    show = function()
-      local topGui = game.player.gui.top
+    show = function(p)
+      local player = p or game.player
+      local topGui = player.gui.top
       if topGui.foremanFlow and topGui.foremanFlow.blueprintTools then
         topGui.foremanFlow.blueprintTools.style.visible = true
       end
     end,
 
-    hide = function()
-      local topGui = game.player.gui.top
+    hide = function(p)
+      local player = p or game.player
+      local topGui = player.gui.top
       if topGui.foremanFlow and topGui.foremanFlow.blueprintTools then
         topGui.foremanFlow.blueprintTools.style.visible = false
       end
     end,
 
-    setButtonOrder = function(orderString)
-      setButtonOrder(game.player, orderString)
-      GUI.refreshOpened(game.player.force)
+    setButtonOrder = function(orderString, p)
+      local player = p or game.player
+      setButtonOrder(player, orderString)
+      GUI.refreshOpened(player.force)
     end,
   })
