@@ -529,15 +529,15 @@ function GUI.createBlueprintWindow(player, guiSettings)
 
   local tools = window.add({type="frame", direction="horizontal", style="blueprint_thin_frame"})
 
-  tools.add({type = "sprite-button", name="blueprintToolMirror", tooltip = "Mirror blueprint", sprite = "mirror_sprite", style = "blueprint_sprite_button"})
+  tools.add({type = "sprite-button", name="blueprintToolMirror", tooltip = {"tooltip-blueprint-mirror"}, sprite = "mirror_sprite", style = "blueprint_sprite_button"})
   tools.add({type = "label", caption = "Replace"})
-  local search = tools.add({type = "sprite-button", name = "blueprintToolSearch", tooltip = "Entity to replace", style = "blueprint_sprite_button"})
+  local search = tools.add({type = "sprite-button", name = "blueprintToolSearch", tooltip = {"tooltip-blueprint-search"}, style = "blueprint_sprite_button"})
   search.sprite = guiSettings.search and "item/"..guiSettings.search or ""
 
   tools.add({type = "label", caption = "with"})
-  local replace = tools.add({type = "sprite-button", name = "blueprintToolReplace", tooltip = "Entity to insert", style = "blueprint_sprite_button"})
+  local replace = tools.add({type = "sprite-button", name = "blueprintToolReplace", tooltip = {"tooltip-blueprint-replace"}, style = "blueprint_sprite_button"})
   replace.sprite = guiSettings.replace and "item/" .. guiSettings.replace or ""
-  tools.add({type = "button", name = "blueprintToolReplaceOk", caption = "Ok", style = "blueprint_button_style"})
+  tools.add({type = "button", name = "blueprintToolReplaceOk", caption = {"btn-ok"}, style = "blueprint_button_style"})
 
   --tools.add({type = "button", name = "blueprintToolMoveUp", caption = "U", tooltip = "Move up 2 tiles", style = "blueprint_button_style"})
   --tools.add({type = "button", name = "blueprintToolMoveRight", caption = "R", tooltip = "Move right 2 tiles", style = "blueprint_button_style"})
@@ -1434,6 +1434,14 @@ local function toggleGui(event_)
   if err then game.players[event_.player_index].print(err) end
 end
 script.on_event("blueprint_toggle_gui", toggleGui)
+
+local function mirrorKey(event_)
+  local _, err = pcall(function(event)
+    on_gui_click.blueprintToolMirror(game.players[event.player_index])
+  end, event_)
+  if err then game.players[event_.player_index].print(err) end
+end
+script.on_event("blueprint_mirror", mirrorKey)
 
 remote.add_interface("foreman",
   {

@@ -31,7 +31,8 @@ Features
 
 ###Hotkeys
 
- - Toggle the gui: Ctrl + T by default
+ - Toggle the gui: Ctrl + T
+ - Mirror blueprint: Alt + R
  
 ###Console commands:
  
@@ -52,7 +53,7 @@ Changelog
 ---
 1.1.0
 
- - added button to mirror blueprint/ active blueprint in a book (mirroring along the other axis is just mirroring and rotating by 180°)
+ - added button/hotkey to mirror blueprint/ active blueprint in a book (mirroring along the other axis is just mirroring and rotating by 180°)
  - added buttons to replace an entity with another one (to upgrade belts, assemblers, etc)
  - cicking Delete blueprint with a blueprint on the cursor overwrites the stored blueprint
  - changed remote interface to accept an optional [LuaPlayer](http://lua-api.factorio.com/latest/LuaPlayer.html) argument
