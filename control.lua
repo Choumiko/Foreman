@@ -1336,7 +1336,19 @@ on_gui_click = {
     end,
 
     blueprintInfoDelete = function(player, _, blueprintIndex)
-      return deleteBlueprint(player, blueprintIndex)
+      local stack = getBlueprintOnCursor(player) 
+      if stack then
+        local name = global.blueprints[player.force.name][blueprintIndex].name
+        deleteBlueprint(player, blueprintIndex)
+        local blueprintData = getBlueprintData(stack)
+        if blueprintData then
+          blueprintData.name = name
+          local blueprintString = BlueprintString.toString(blueprintData)
+          return addBlueprintToTable(player, blueprintString, name)
+        end
+      else
+        return deleteBlueprint(player, blueprintIndex)
+      end
     end,
 
     blueprintInfoBookDelete = function(player, _, blueprintIndex)

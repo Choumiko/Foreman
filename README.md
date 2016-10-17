@@ -23,7 +23,7 @@ Features
 
 ###Per blueprint/book buttons
 
- - Delete stored blueprints
+ - Delete stored blueprints (clicking with a blueprint on the cursor will overwrite instead of deleting)
  - Load blueprint to toolbar or to cursor (if clicked with a blueprint)
  - Export blueprint to file
  - Rename blueprints
@@ -41,10 +41,7 @@ Features
 
 Todo
 ---
-- cleanup the top buttons, only one button to read in strings, one button to add blueprints/books from cursor
-- fix duplicate checking
-- add 2 missing button graphics
-- ???
+- wait for 0.15
 
 Credits
 ---
@@ -57,6 +54,8 @@ Changelog
 
  - added button to mirror blueprint/ active blueprint in a book (mirroring along the other axis is just mirroring and rotating by 180°)
  - added buttons to replace an entity with another one (to upgrade belts, assemblers, etc)
+ - cicking Delete blueprint with a blueprint on the cursor overwrites the stored blueprint
+ - changed remote interface to accept an optional [LuaPlayer](http://lua-api.factorio.com/latest/LuaPlayer.html) argument
 
 1.0.2
 
