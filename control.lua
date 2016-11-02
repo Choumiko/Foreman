@@ -118,7 +118,7 @@ saveToFile = function(player, blueprintIndex, book)
   end
   local blueprintData, stringOutput, extension
   if book then
-    log("save book")
+    --log("save book")
     blueprintData = util.table.deepcopy(global.books[player.force.name][blueprintIndex])
     --    for _, blueprint in pairs(blueprintData.blueprints) do
     --      blueprint.data = addNametoBlueprintString(blueprintData.data, blueprint.name)
@@ -127,7 +127,7 @@ saveToFile = function(player, blueprintIndex, book)
     stringOutput = serpent.dump(blueprintData, {comment=false})
     extension = ".book"
   else
-    log("save blueprint")
+    --log("save blueprint")
     blueprintData = global.blueprints[player.force.name][blueprintIndex]
     stringOutput = addNametoBlueprintString(blueprintData.data, blueprintData.name)
     extension = ".blueprint"
@@ -369,7 +369,7 @@ function sortAllBlueprints(forceName)
 end
 
 function cleanupName(name)
-  return string.gsub(name:trim(), "[\\.?~!@#$%^&*(){}\"']", "")
+  return string.gsub(name:trim(), "[\\.\"']", "")
 end
 
 function findBlueprint(player, state)
@@ -730,9 +730,9 @@ end
 addBlueprintFromCursor = function(player, stack)
   local blueprintData = getBlueprintData(stack)
   if blueprintData then
-    blueprintData.name = stack.label
+    blueprintData.name = stack.label and cleanupName(stack.label) or nil
     local blueprintString = BlueprintString.toString(blueprintData)
-    return addBlueprintToTable(player, blueprintString, stack.label)
+    return addBlueprintToTable(player, blueprintString, blueprintData.name)
   end
 end
 
@@ -744,11 +744,12 @@ addBookFromCursor = function(player, cursor_stack)
   local data
   local numBooks = #global.books[player.force.name]
   numBooks = numBooks < 10 and "0" .. numBooks or numBooks
-  local bookName = cursor_stack.label or "Book_" .. numBooks
+  local bookName = cursor_stack.label and cleanupName(cursor_stack.label) or "Book_" .. numBooks  
   local num = 0
   if isValidSlot(active, "setup") then
     data = getBlueprintData(active)
     data.name = active.label and active.label or bookName .. "_" .. num
+    data.name = cleanupName(data.name)
     table.insert(blueprints, {name = data.name, data = BlueprintString.toString(data)})
     num = num + 1
   end
@@ -756,6 +757,7 @@ addBookFromCursor = function(player, cursor_stack)
     if isValidSlot(main[i], "setup") then
       data = getBlueprintData(main[i])
       data.name = main[i].label or bookName .. "_" .. num
+      data.name = cleanupName(data.name)
       table.insert(blueprints, {name = data.name, data = BlueprintString.toString(data)})
       num = num + 1
     end
@@ -1429,7 +1431,9 @@ script.on_event(defines.events.on_gui_click, on_gui_click.on_gui_click)
 
 local function toggleGui(event_)
   local _, err = pcall(function(event)
-    on_gui_click.blueprintTools(game.players[event.player_index], global.guiSettings[event.player_index])
+    if global.unlocked[game.players[event.player_index].force.name] then
+      on_gui_click.blueprintTools(game.players[event.player_index], global.guiSettings[event.player_index])
+    end
   end, event_)
   if err then game.players[event_.player_index].print(err) end
 end

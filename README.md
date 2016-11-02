@@ -51,6 +51,11 @@ graphics/save_icon.jpg made by [Freepik](http://www.freepik.com) from [Flaticon]
 ***
 Changelog
 ---
+1.1.1
+ 
+ - Hotkey to toggle the GUI only works after Blueprints are researched
+ - Allowed more characters in blueprints (Only . \ " and ' are removed)
+
 1.1.0
 
  - added button/hotkey to mirror blueprint/ active blueprint in a book (mirroring along the other axis is just mirroring and rotating by 180°)
