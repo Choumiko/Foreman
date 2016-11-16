@@ -144,9 +144,9 @@ saveToFile = function(player, blueprintIndex, book)
   local folder = player.name ~= "" and player.name:gsub("[/\\:*?\"<>|]", "_") .."/"
   folder = (folder and folder ~= "/") and folder or ""
   filename = "blueprint-string/" .. folder .. filename .. extension
-  game.write_file(filename , stringOutput)
-  Game.print_force(player.force, {"", player.name, " ", {"msg-export-blueprint"}})
-  Game.print_force(player.force, "File: script-output/".. folder .. filename)
+  game.write_file(filename , stringOutput, player.index)
+  player.print({"", player.name, " ", {"msg-export-blueprint"}})
+  player.print("File: script-output/".. filename)
 end
 
 function contains_entities(bp, entities)
