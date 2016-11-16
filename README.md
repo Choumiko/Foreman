@@ -51,6 +51,10 @@ graphics/save_icon.jpg made by [Freepik](http://www.freepik.com) from [Flaticon]
 ***
 Changelog
 ---
+1.1.2
+
+ - mirroring blueprints now also mirrors tiles
+
 1.1.1
  
  - Hotkey to toggle the GUI only works after Blueprints are researched
@@ -60,7 +64,7 @@ Changelog
 
  - added button/hotkey to mirror blueprint/ active blueprint in a book (mirroring along the other axis is just mirroring and rotating by 180°)
  - added buttons to replace an entity with another one (to upgrade belts, assemblers, etc)
- - cicking Delete blueprint with a blueprint on the cursor overwrites the stored blueprint
+ - clicking Delete blueprint with a blueprint on the cursor overwrites the stored blueprint
  - changed remote interface to accept an optional [LuaPlayer](http://lua-api.factorio.com/latest/LuaPlayer.html) argument
 
 1.0.2
