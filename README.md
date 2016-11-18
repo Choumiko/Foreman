@@ -40,6 +40,14 @@ Features
  - Hide the main button: /c remote.call("foreman", "hide")
  - Change button order for stored blueprints (L,E,R,D stand for Load, Export, Rename, Delete): /c remote.call("foreman", "setButtonOrder", "LERD")
 
+###Sharing blueprints across saves:
+
+ - click the Export/Export all button for the blueprint/book you want to share
+ - the files are written to:  C:\Users\"Yor user name"\AppData\Roaming\Factorio\script-output on Windows,  to ~/.factorio/script-output on Linux or to wherever you installed the zip version  
+ If you can't find it search your PC for the path/filename Foreman prints ingame when exporting
+ - to import a blueprint: copy the contents of the file, open the Foreman gui, click the + button and paste it in the textfield, click import.
+
+
 Todo
 ---
 - wait for 0.15
@@ -53,6 +61,9 @@ Changelog
 ---
 1.1.2
 
+ - clicking the load button on a stored book with an empty cursor now loads the book into a book with enough empty blueprints in the inventory/toolbar
+ - added option to overwrite blueprint books when clicking load with an empty cursor, defaults to false
+ - The "load to cursor" and "close gui after loading to cursor" settings now also apply for blueprint books
  - mirroring blueprints now also mirrors tiles
  - fixed error when replacing rails in a blueprint
  - fixed wrong filename being printed when exporting blueprints

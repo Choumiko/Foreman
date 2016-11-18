@@ -1,8 +1,9 @@
 {
 	"name":"Foreman",
-	"version":"1.1.1",
+	"version":"1.1.2",
 	"factorio_version": "0.14",
+    "title":"Foreman",
 	"author":"Choumiko (originally: JamesOFarrell)",
-	"title":"Foreman",
+	"homepage": "https://forums.factorio.com/viewtopic.php?f=92&t=14243",
 	"description":"For managing all your blueprint needs."
 } 
