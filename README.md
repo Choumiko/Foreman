@@ -54,6 +54,8 @@ Changelog
 1.1.2
 
  - mirroring blueprints now also mirrors tiles
+ - fixed error when replacing rails in a blueprint
+ - fixed wrong filename being printed when exporting blueprints
 
 1.1.1
  

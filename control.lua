@@ -532,11 +532,11 @@ function GUI.createBlueprintWindow(player, guiSettings)
   tools.add({type = "sprite-button", name="blueprintToolMirror", tooltip = {"tooltip-blueprint-mirror"}, sprite = "mirror_sprite", style = "blueprint_sprite_button"})
   tools.add({type = "label", caption = "Replace"})
   local search = tools.add({type = "sprite-button", name = "blueprintToolSearch", tooltip = {"tooltip-blueprint-search"}, style = "blueprint_sprite_button"})
-  search.sprite = guiSettings.search and "item/"..guiSettings.search or ""
+  search.sprite = guiSettings.search and "entity/"..guiSettings.search or ""
 
   tools.add({type = "label", caption = "with"})
   local replace = tools.add({type = "sprite-button", name = "blueprintToolReplace", tooltip = {"tooltip-blueprint-replace"}, style = "blueprint_sprite_button"})
-  replace.sprite = guiSettings.replace and "item/" .. guiSettings.replace or ""
+  replace.sprite = guiSettings.replace and "entity/" .. guiSettings.replace or ""
   tools.add({type = "button", name = "blueprintToolReplaceOk", caption = {"btn-ok"}, style = "blueprint_button_style"})
 
   --tools.add({type = "button", name = "blueprintToolMoveUp", caption = "U", tooltip = "Move up 2 tiles", style = "blueprint_button_style"})
@@ -1369,7 +1369,7 @@ on_gui_click = {
       local stack = player.cursor_stack.valid_for_read and player.cursor_stack or false
       local search = stack and getEntityNameFromItem(stack)
       if search then
-        element.sprite = "item/" .. stack.name
+        element.sprite = "entity/" .. search--stack.name
       else
         element.sprite = ""
       end
@@ -1380,7 +1380,7 @@ on_gui_click = {
       local stack = player.cursor_stack.valid_for_read and player.cursor_stack or false
       local replace = stack and getEntityNameFromItem(stack)
       if replace then
-        element.sprite = "item/" .. stack.name
+        element.sprite = "entity/" .. replace --stack.name
       else
         element.sprite = ""
       end
