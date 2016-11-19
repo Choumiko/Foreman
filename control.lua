@@ -331,7 +331,8 @@ local function clearBlueprintBook(book)
   book.label = ""
   for i = 1, #active do
     bp = active[i]
-    if isValidSlot(bp) then
+    if isValidSlot(bp, 'setup') then
+      bp.blueprint_icons = {{index=1, signal={type="item"}}}
       bp.set_blueprint_entities({})
       bp.set_blueprint_tiles({})
       bp.label = ""
@@ -339,7 +340,8 @@ local function clearBlueprintBook(book)
   end
   for i = 1, #main do
     bp = main[i]
-    if isValidSlot(bp) then
+    if isValidSlot(bp, 'setup') then
+      bp.blueprint_icons = {{index=1, signal={type="item"}}}
       bp.set_blueprint_entities({})
       bp.set_blueprint_tiles({})
       bp.label = ""
