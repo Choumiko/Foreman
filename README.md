@@ -59,6 +59,11 @@ graphics/save_icon.jpg made by [Freepik](http://www.freepik.com) from [Flaticon]
 ***
 Changelog
 ---
+1.1.3
+
+ - fixed "overwrite books" option not clearing blueprints
+ - fixed error when using Export all
+
 1.1.2
 
  - clicking the load button on a stored book with an empty cursor now loads the book into a book with enough empty blueprints in the inventory/toolbar

@@ -324,7 +324,30 @@ getBlueprintOnCursor = function (player)
   return false
 end
 
-function clearBlueprintBook(event_)
+local function clearBlueprintBook(book)
+  local active = book.get_inventory(defines.inventory.item_active)
+  local main = book.get_inventory(defines.inventory.item_main)
+  local bp
+  book.label = ""
+  for i = 1, #active do
+    bp = active[i]
+    if isValidSlot(bp) then
+      bp.set_blueprint_entities({})
+      bp.set_blueprint_tiles({})
+      bp.label = ""
+    end
+  end
+  for i = 1, #main do
+    bp = main[i]
+    if isValidSlot(bp) then
+      bp.set_blueprint_entities({})
+      bp.set_blueprint_tiles({})
+      bp.label = ""
+    end
+  end
+end
+
+local function deleteBlueprintBook(event_)
   local _, err = pcall(function(event)
     local player = game.players[event.player_index]
     if not global.guiSettings[player.index].hotkey then
@@ -332,28 +355,13 @@ function clearBlueprintBook(event_)
     end
     local cursor_stack = (player.cursor_stack.valid_for_read and player.cursor_stack.type == "blueprint-book") and player.cursor_stack or false
     if cursor_stack then
-      cursor_stack.label = ""
-      local active = cursor_stack.get_inventory(defines.inventory.item_active)[1]
-      local main = cursor_stack.get_inventory(defines.inventory.item_main)
-
-      if isValidSlot(active) then
-        active.label = ""
-        active.set_blueprint_tiles({})
-        active.set_blueprint_entities({})
-      end
-      for i=1, #main do
-        if isValidSlot(main[i]) then
-          main[i].label = ""
-          main[i].set_blueprint_tiles({})
-          main[i].set_blueprint_entities({})
-        end
-      end
+      clearBlueprintBook(cursor_stack)      
     end
   end, event_)
   if err then game.players[event_.player_index].print(err) end
 end
 
-script.on_event("blueprint_delete_book", clearBlueprintBook)
+script.on_event("blueprint_delete_book", deleteBlueprintBook)
 
 function split(stringA, sep)
   sep = sep or ":"
@@ -1119,8 +1127,8 @@ on_gui_click = {
         local filename = "export" .. #data.blueprints .. "_" .. #data.books
         filename = "blueprint-string/" .. folder .. filename .. ".lua"
         game.write_file(filename , stringOutput, player.index)
-        player.print(player.force, {"", player.name, " ", {"msg-export-blueprint"}})
-        player.print(player.force, "File: script-output/".. filename)
+        player.print({"", player.name, " ", {"msg-export-blueprint"}})
+        player.print("File: script-output/".. filename)
       end
     end,
 
@@ -1200,7 +1208,9 @@ on_gui_click = {
             local main = cursor_stack.get_inventory(defines.inventory.item_main)
             local countBookBlueprints = main.get_item_count("blueprint") + active.get_item_count("blueprint")
             active = active[1]
-
+            if guiSettings.overwriteBooks then
+              clearBlueprintBook(cursor_stack)
+            end
             if countBookBlueprints >= count then
               local empty = {}
               local setup = {}
