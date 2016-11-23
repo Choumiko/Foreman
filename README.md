@@ -34,6 +34,7 @@ Features
  - If activated in the settings, Foreman will convert empty blueprints in your inventory into virutal blueprints and remove all but one empty blueprint from the inventory.
  - When trying to load a book Foreman will create empty blueprints if necessary, reducing the number of virtual blueprints accordingly.
  - When loading a blueprint that has fewer blueprints than the book it's loaded into, Foreman will remove the ones that are not needed and convert them into virtual blueprints
+ - To convert the virtual blueprints back into normal ones, make sure you have enough space in your inventory and deactivate the setting.
 
 ###Hotkeys
 

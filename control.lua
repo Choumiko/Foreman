@@ -438,8 +438,23 @@ function findEmptyBlueprints(player)
   return #blueprints > 0 and blueprints or false
 end
 
+function countEmptyBlueprints(player)
+  local inventories = {player.get_inventory(defines.inventory.player_main), player.get_inventory(defines.inventory.player_quickbar)}
+  local count = 0
+  for _, inv in pairs(inventories) do
+    for i=1,#inv do
+      local itemStack = inv[i]
+      if itemStack.valid_for_read and itemStack.type == "blueprint" and not itemStack.is_blueprint_setup() then
+        count = count + 1
+      end
+    end
+  end
+  return count
+end
+
 function findBlueprintBook(player, requiredBlueprints, state)
   local inventories = {player.get_inventory(defines.inventory.player_quickbar), player.get_inventory(defines.inventory.player_main)}
+  local totalCount = 0
   for _, inv in pairs(inventories) do
     for i=1,#inv do
       local itemStack = inv[i]
@@ -447,12 +462,14 @@ function findBlueprintBook(player, requiredBlueprints, state)
         local count = countBlueprints(itemStack, state)
         local emptyCount = findEmptyBlueprints(player)
         emptyCount = emptyCount and #emptyCount or 0
-        if count >= requiredBlueprints or (emptyCount + count + global.guiSettings[player.index].virtualBlueprints )>= requiredBlueprints then
-          return itemStack
+        totalCount = emptyCount + count + global.guiSettings[player.index].virtualBlueprints
+        if count >= requiredBlueprints or totalCount >= requiredBlueprints then
+          return itemStack, totalCount
         end
       end
     end
   end
+  return nil, totalCount
 end
 
 GUI = {}
@@ -1241,12 +1258,17 @@ on_gui_click = {
 
     blueprintInfoBookLoad = function(player, guiSettings, blueprintIndex)
       local cursor_stack = player.cursor_stack
+      local availableBlueprints
       local book = global.books[player.force.name][blueprintIndex]
       if book then
+        local count = #book.blueprints
         if not cursor_stack or not cursor_stack.valid_for_read then
-          cursor_stack = findBlueprintBook(player, #book.blueprints, 'empty')
+          cursor_stack = findBlueprintBook(player, count, 'empty')
           if not cursor_stack and guiSettings.overwriteBooks then
-            cursor_stack = findBlueprintBook(player, #book.blueprints)
+            cursor_stack, availableBlueprints = findBlueprintBook(player, count)
+            if not cursor_stack then
+              player.print("Not enough blueprints. Need " .. count - availableBlueprints .. " more") --TODO localisation
+            end
           end
         end
         if cursor_stack and cursor_stack.valid_for_read then
@@ -1255,15 +1277,14 @@ on_gui_click = {
             return
           end
           if cursor_stack.type == "blueprint-book" then
-            local count = #book.blueprints
             local active = cursor_stack.get_inventory(defines.inventory.item_active)
             local main = cursor_stack.get_inventory(defines.inventory.item_main)
             local countBookBlueprints = main.get_item_count("blueprint") + active.get_item_count("blueprint")
             if guiSettings.overwriteBooks then
               clearBlueprintBook(cursor_stack)
             end
-            log("Loading " .. count .. "blueprints")
-            log("bps in book: " .. countBookBlueprints)
+            --log("Loading " .. count .. " blueprints")
+            --log("bps in book: " .. countBookBlueprints)
             if countBookBlueprints < count then
               local inserted
               local toInsert = count - countBookBlueprints
@@ -1274,24 +1295,23 @@ on_gui_click = {
                   countBookBlueprints = countBookBlueprints + inserted
                   guiSettings.virtualBlueprints = guiSettings.virtualBlueprints - inserted
                   toInsert = toInsert - inserted
-                  log("inserted virtual in active: " .. inserted)
-                  log("toInsert: ".. toInsert)
-                  log("in book: " .. countBookBlueprints)
+                  --("inserted virtual in active: " .. inserted)
+                  --log("toInsert: ".. toInsert)
+                  --log("in book: " .. countBookBlueprints)
                 end
                 if guiSettings.virtualBlueprints > 0 and toInsert > 0 then
                   toInsert = virtualBP >= toInsert and toInsert or virtualBP
                   inserted = main.insert{name="blueprint", count = toInsert}
                   countBookBlueprints = countBookBlueprints + inserted
-                  toInsert = toInsert - inserted
                   guiSettings.virtualBlueprints = guiSettings.virtualBlueprints - inserted
-                  log("inserted virtual in main: " .. inserted)
-                  log("toInsert: ".. toInsert)
-                  log("in book: " .. countBookBlueprints)
+                  --log("inserted virtual in main: " .. inserted)
+                  --log("toInsert: ".. toInsert)
+                  --log("in book: " .. countBookBlueprints)
                 end
                 player.print({"msg-virtual-count", guiSettings.virtualBlueprints})
               end
               if countBookBlueprints < count then
-                log("inserting empties")
+                --log("inserting empties")
                 local emptyBlueprints = findEmptyBlueprints(player)
                 if emptyBlueprints then
                   local emptyBlueprintsCount = #emptyBlueprints
@@ -1302,16 +1322,16 @@ on_gui_click = {
                     toInsert = toInsert - inserted
                     countBookBlueprints = countBookBlueprints + inserted
                     emptyBlueprintsCount = emptyBlueprintsCount - 1
-                    log("inserted empty in active: " .. inserted)
-                    log("toInsert: ".. toInsert)
-                    log("in book: " .. countBookBlueprints)
+                    --log("inserted empty in active: " .. inserted)
+                    --log("toInsert: ".. toInsert)
+                    --log("in book: " .. countBookBlueprints)
                   end
                   if emptyBlueprintsCount > 0 and toInsert > 0 then
                     inserted = inserted + main.insert{name="blueprint", count = toInsert}
                     countBookBlueprints = countBookBlueprints + inserted
-                    log("inserted virtual in main: " .. inserted)
-                    log("toInsert: ".. toInsert)
-                    log("in book: " .. countBookBlueprints)
+                    --log("inserted virtual in main: " .. inserted)
+                    --log("toInsert: ".. toInsert)
+                    --log("in book: " .. countBookBlueprints)
                   end
                   if inserted > 0 then
                     for i=1, inserted do
@@ -1362,7 +1382,7 @@ on_gui_click = {
                     local status, err = pcall(function() setBlueprintData(player.force, empty[writeIndex], newBP) end )
                     newBP.name = newBP.name or ""
                     if status then
-                      player.print({"msg-blueprint-loaded", "'" .. newBP.name .. "'"})
+                      --player.print({"msg-blueprint-loaded", "'" .. newBP.name .. "'"})
                       writeIndex = writeIndex + 1
                     else
                       player.print({"msg-blueprint-notloaded"})
@@ -1379,6 +1399,7 @@ on_gui_click = {
                     cursor_stack.clear()
                   end
                 end
+                player.print({"msg-blueprint-book-loaded", book.name})
                 if guiSettings.useVirtual then
                   for i=1, #main do
                     if isValidSlot(main[i],'empty') then
@@ -1386,6 +1407,11 @@ on_gui_click = {
                       guiSettings.virtualBlueprints = guiSettings.virtualBlueprints + 1
                     end
                   end
+                end
+                if guiSettings.virtualBlueprints > 0 and countEmptyBlueprints(player) == 0 then
+                  guiSettings.virtualBlueprints = guiSettings.virtualBlueprints - player.insert{name="blueprint", count=1}
+                end
+                if guiSettings.useVirtual or guiSettings.virtualBlueprints > 0 then
                   player.print({"msg-virtual-count", guiSettings.virtualBlueprints})
                 end
                 if guiSettings.closeGui and player.gui.left.blueprintWindow then
