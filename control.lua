@@ -455,21 +455,20 @@ end
 function findBlueprintBook(player, requiredBlueprints, state)
   local inventories = {player.get_inventory(defines.inventory.player_quickbar), player.get_inventory(defines.inventory.player_main)}
   local totalCount = 0
+  local available = countEmptyBlueprints(player) + global.guiSettings[player.index].virtualBlueprints
   for _, inv in pairs(inventories) do
     for i=1,#inv do
       local itemStack = inv[i]
       if itemStack.valid_for_read and itemStack.type == "blueprint-book" then
         local count = countBlueprints(itemStack, state)
-        local emptyCount = findEmptyBlueprints(player)
-        emptyCount = emptyCount and #emptyCount or 0
-        totalCount = emptyCount + count + global.guiSettings[player.index].virtualBlueprints
+        totalCount = available + count 
         if count >= requiredBlueprints or totalCount >= requiredBlueprints then
           return itemStack, totalCount
         end
       end
     end
   end
-  return nil, totalCount
+  return nil, totalCount + available
 end
 
 GUI = {}
