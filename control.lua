@@ -1262,40 +1262,63 @@ on_gui_click = {
             if guiSettings.overwriteBooks then
               clearBlueprintBook(cursor_stack)
             end
+            log("Loading " .. count .. "blueprints")
+            log("bps in book: " .. countBookBlueprints)
             if countBookBlueprints < count then
-              local emptyBlueprints = findEmptyBlueprints(player)
-              local emptyBlueprintsCount = emptyBlueprints and #emptyBlueprints or 0
-              local inserted = 0
-              if emptyBlueprints then
-                local toInsert = emptyBlueprintsCount >= countBookBlueprints and count - countBookBlueprints or emptyBlueprintsCount
-                if not active[1].valid_for_read then
-                  inserted = active.insert{name="blueprint", count = 1}
-                  toInsert = toInsert - inserted
-                  countBookBlueprints = countBookBlueprints + inserted
-                  emptyBlueprintsCount = emptyBlueprintsCount - 1
-                end
-                if emptyBlueprintsCount > 0 then
-                  inserted = inserted + main.insert{name="blueprint", count = toInsert}
-                  countBookBlueprints = countBookBlueprints + inserted
-                end
-                for i=1, inserted do
-                  emptyBlueprints[i].clear()
-                end
-              end
+              local inserted
+              local toInsert = count - countBookBlueprints
               if guiSettings.virtualBlueprints > 0 then
                 local virtualBP = guiSettings.virtualBlueprints
-                local toInsert
                 if not active[1].valid_for_read then
                   inserted = active.insert{name="blueprint", count = 1}
                   countBookBlueprints = countBookBlueprints + inserted
                   guiSettings.virtualBlueprints = guiSettings.virtualBlueprints - inserted
+                  toInsert = toInsert - inserted
+                  log("inserted virtual in active: " .. inserted)
+                  log("toInsert: ".. toInsert)
+                  log("in book: " .. countBookBlueprints)
                 end
-                if guiSettings.virtualBlueprints > 0 then
-                  toInsert = virtualBP >= countBookBlueprints and count - countBookBlueprints or virtualBP
+                if guiSettings.virtualBlueprints > 0 and toInsert > 0 then
+                  toInsert = virtualBP >= toInsert and toInsert or virtualBP
                   inserted = main.insert{name="blueprint", count = toInsert}
+                  countBookBlueprints = countBookBlueprints + inserted
+                  toInsert = toInsert - inserted
                   guiSettings.virtualBlueprints = guiSettings.virtualBlueprints - inserted
+                  log("inserted virtual in main: " .. inserted)
+                  log("toInsert: ".. toInsert)
+                  log("in book: " .. countBookBlueprints)
                 end
-                countBookBlueprints = main.get_item_count("blueprint") + active.get_item_count("blueprint")
+                player.print({"msg-virtual-count", guiSettings.virtualBlueprints})
+              end
+              if countBookBlueprints < count then
+                log("inserting empties")
+                local emptyBlueprints = findEmptyBlueprints(player)
+                if emptyBlueprints then
+                  local emptyBlueprintsCount = #emptyBlueprints
+                  toInsert = emptyBlueprintsCount >= count - countBookBlueprints and count - countBookBlueprints or emptyBlueprintsCount
+                  inserted = 0
+                  if not active[1].valid_for_read then
+                    inserted = active.insert{name="blueprint", count = 1}
+                    toInsert = toInsert - inserted
+                    countBookBlueprints = countBookBlueprints + inserted
+                    emptyBlueprintsCount = emptyBlueprintsCount - 1
+                    log("inserted empty in active: " .. inserted)
+                    log("toInsert: ".. toInsert)
+                    log("in book: " .. countBookBlueprints)
+                  end
+                  if emptyBlueprintsCount > 0 and toInsert > 0 then
+                    inserted = inserted + main.insert{name="blueprint", count = toInsert}
+                    countBookBlueprints = countBookBlueprints + inserted
+                    log("inserted virtual in main: " .. inserted)
+                    log("toInsert: ".. toInsert)
+                    log("in book: " .. countBookBlueprints)
+                  end
+                  if inserted > 0 then
+                    for i=1, inserted do
+                      emptyBlueprints[i].clear()
+                    end
+                  end
+                end
               end
             end
             active = active[1]
