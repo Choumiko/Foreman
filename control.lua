@@ -23,7 +23,7 @@ end
 
 local function init_player(player)
   local i = player.index
-  global.guiSettings[i] = global.guiSettings[i] or {page = 1, displayCount = 10, overwrite = false, overwriteBooks = false, hotkey = false, setCursor = false}
+  global.guiSettings[i] = global.guiSettings[i] or {page = 1, displayCount = 10, overwrite = false, overwriteBooks = false, hotkey = false, setCursor = false, virutalBlueprints = 0}
   local guiSettings = global.guiSettings[i]
   if guiSettings.overwrite == nil then
     guiSettings.overwrite = false
@@ -45,6 +45,12 @@ local function init_player(player)
   end
   if not guiSettings.buttonOrder then
     guiSettings.buttonOrder = {"D", "L", "E", "R"}
+  end
+  if guiSettings.useVirtual == nil then
+    guiSettings.useVirtual = false
+  end
+  if not guiSettings.virtualBlueprints then
+    guiSettings.virtualBlueprints = 0
   end
 end
 
@@ -147,7 +153,7 @@ saveToFile = function(player, blueprintIndex, book)
   local folder = player.name ~= "" and player.name:gsub("[/\\:*?\"<>|]", "_") .."/"
   folder = (folder and folder ~= "/") and folder or ""
   filename = "blueprint-string/" .. folder .. filename .. extension
-  game.write_file(filename , stringOutput, player.index)
+  game.write_file(filename , stringOutput, false, player.index)
   player.print({"", player.name, " ", {"msg-export-blueprint"}})
   player.print("File: script-output/".. filename)
 end
@@ -185,7 +191,7 @@ end
 function saveVar(var, name,sparse)
   var = var or global
   local n = name or "foreman"
-  game.write_file(n..".lua", serpent.block(var, {name="global", sparse=sparse, comment=false}))
+  game.write_file(n..".lua", serpent.block(var, {name="global", sparse=sparse, comment=false}), false)
 end
 
 -- run once
@@ -261,10 +267,7 @@ local function on_configuration_changed(changes)
           end
         end
       end
-      if oldVersion < "1.0.1" then
-        init_players()
-      end
-      if oldVersion < "1.1.2" then
+      if oldVersion < "1.1.3" then
         init_players()
       end
       Game.print_all("Updated Foreman from ".. oldVersion .. " to " .. newVersion)
@@ -357,7 +360,7 @@ local function deleteBlueprintBook(event_)
     end
     local cursor_stack = (player.cursor_stack.valid_for_read and player.cursor_stack.type == "blueprint-book") and player.cursor_stack or false
     if cursor_stack then
-      clearBlueprintBook(cursor_stack)      
+      clearBlueprintBook(cursor_stack)
     end
   end, event_)
   if err then game.players[event_.player_index].print(err) end
@@ -421,13 +424,32 @@ function findBlueprint(player, state)
   end
 end
 
+function findEmptyBlueprints(player)
+  local inventories = {player.get_inventory(defines.inventory.player_main), player.get_inventory(defines.inventory.player_quickbar)}
+  local blueprints = {}
+  for _, inv in pairs(inventories) do
+    for i=1,#inv do
+      local itemStack = inv[i]
+      if itemStack.valid_for_read and itemStack.type == "blueprint" and not itemStack.is_blueprint_setup() then
+        table.insert(blueprints,itemStack)
+      end
+    end
+  end
+  return #blueprints > 0 and blueprints or false
+end
+
 function findBlueprintBook(player, requiredBlueprints, state)
   local inventories = {player.get_inventory(defines.inventory.player_quickbar), player.get_inventory(defines.inventory.player_main)}
   for _, inv in pairs(inventories) do
     for i=1,#inv do
       local itemStack = inv[i]
-      if itemStack.valid_for_read and itemStack.type == "blueprint-book" and countBlueprints(itemStack, state) >= requiredBlueprints then
-        return itemStack
+      if itemStack.valid_for_read and itemStack.type == "blueprint-book" then
+        local count = countBlueprints(itemStack, state)
+        local emptyCount = findEmptyBlueprints(player)
+        emptyCount = emptyCount and #emptyCount or 0
+        if count >= requiredBlueprints or (emptyCount + count + global.guiSettings[player.index].virtualBlueprints )>= requiredBlueprints then
+          return itemStack
+        end
       end
     end
   end
@@ -462,6 +484,12 @@ function GUI.createSettingsWindow(player, guiSettings)
     local hideButton = frame.add{type = "checkbox", name = "blueprintSettingsHideButton", caption = {"lbl-blueprint-hideButton"}, state = guiSettings.hideButton}
     hideButton.tooltip = {"tooltip-blueprint-hideButton"}
 
+    local virtualFlow = frame.add{type = "flow", direction = "horizontal"}
+    local useVirtual = virtualFlow.add{type = "checkbox", name = "blueprintSettingsVirtual", caption = {"lbl-blueprint-virtual", guiSettings.virtualBlueprints}, state = guiSettings.useVirtual, tooltip = {"tooltip-blueprint-virtual"}}
+
+    virtualFlow.add{type = "button", name="blueprintSettingsVirtualHelp", caption = "?", style = "blueprint_button_style"}
+
+
     local order = ""
     for _, button in pairs(guiSettings.buttonOrder) do
       order = order .. button
@@ -473,11 +501,11 @@ function GUI.createSettingsWindow(player, guiSettings)
     buttonOrder.style.minimal_width = 50
     buttonOrder.tooltip = {"tooltip-blueprint-buttonOrder"}
 
-    local displayCountFlow = frame.add{type="flow", direction="horizontal" }
+    local displayCountFlow = frame.add{type="flow", direction="horizontal"}
     displayCountFlow.add{type="label", caption={"window-blueprint-displaycount"}, tooltip = {"tooltip-blueprint-displayCount"}}
 
     local displayCount = displayCountFlow.add{type="textfield", name="blueprintDisplayCountText", text=guiSettings.displayCount .. ""}
-    displayCount.style.minimal_width = 30
+    displayCount.style.minimal_width = 50
     displayCount.tooltip = {"tooltip-blueprint-displayCount"}
 
     local buttonFlow = frame.add{type="flow", direction="horizontal"}
@@ -485,7 +513,7 @@ function GUI.createSettingsWindow(player, guiSettings)
     buttonFlow.add{type="button", name="blueprintSettingsCancel", caption={"btn-cancel"}, style = "blueprint_button_style"}
 
     return {overwrite = overwrite, displayCount = displayCount, hotkey = hotkey, setCursor = setCursor, closeGui = closeGui,
-      hideButton = hideButton, buttonOrder = buttonOrder, overwriteBooks = overwriteBooks}
+      hideButton = hideButton, buttonOrder = buttonOrder, overwriteBooks = overwriteBooks, useVirtual = useVirtual}
   else
     player.gui.center.blueprintSettingsWindow.destroy()
   end
@@ -1087,12 +1115,34 @@ on_gui_click = {
           guiSettings.setCursor = guiSettings.windows.setCursor.state
           guiSettings.closeGui = guiSettings.windows.closeGui.state
           guiSettings.hideButton = guiSettings.windows.hideButton.state
+          guiSettings.useVirtual = guiSettings.windows.useVirtual.state
           local newInt = tonumber(guiSettings.windows.displayCount.text) or 1
           newInt = newInt > 0 and newInt or 1
           global.guiSettings[player.index].displayCount = newInt
 
           local orderString = string.upper(string.trim(guiSettings.windows.buttonOrder.text))
           setButtonOrder(player, orderString)
+          if not guiSettings.useVirtual then
+            if guiSettings.virtualBlueprints > 0 then
+              local inserted = player.insert{name="blueprint", count=guiSettings.virtualBlueprints}
+              player.print({"msg-inventory-virtual-restored", inserted})
+              if not (inserted == guiSettings.virtualBlueprints) then
+                player.print({"msg-inventory-virtual", guiSettings.virtualBlueprints - inserted})
+              end
+              guiSettings.virtualBlueprints = guiSettings.virtualBlueprints - inserted
+            end
+          end
+          if guiSettings.useVirtual then
+            local emptyBPs = findEmptyBlueprints(player)
+            local emptyBPCount = emptyBPs and #emptyBPs or 0
+            if emptyBPs and emptyBPCount > 1 then
+              guiSettings.virtualBlueprints = guiSettings.virtualBlueprints + emptyBPCount - 1
+              for i=1, emptyBPCount - 1 do
+                emptyBPs[i].clear()
+              end
+            end
+            player.print({"msg-virtual-count", guiSettings.virtualBlueprints})
+          end
         end
         player.gui.center.blueprintSettingsWindow.destroy()
         GUI.createBlueprintWindow(player, guiSettings)
@@ -1128,7 +1178,7 @@ on_gui_click = {
         folder = (folder and folder ~= "/") and folder or ""
         local filename = "export" .. #data.blueprints .. "_" .. #data.books
         filename = "blueprint-string/" .. folder .. filename .. ".lua"
-        game.write_file(filename , stringOutput, player.index)
+        game.write_file(filename , stringOutput, false, player.index)
         player.print({"", player.name, " ", {"msg-export-blueprint"}})
         player.print("File: script-output/".. filename)
       end
@@ -1209,10 +1259,46 @@ on_gui_click = {
             local active = cursor_stack.get_inventory(defines.inventory.item_active)
             local main = cursor_stack.get_inventory(defines.inventory.item_main)
             local countBookBlueprints = main.get_item_count("blueprint") + active.get_item_count("blueprint")
-            active = active[1]
             if guiSettings.overwriteBooks then
               clearBlueprintBook(cursor_stack)
             end
+            if countBookBlueprints < count then
+              local emptyBlueprints = findEmptyBlueprints(player)
+              local emptyBlueprintsCount = emptyBlueprints and #emptyBlueprints or 0
+              local inserted = 0
+              if emptyBlueprints then
+                local toInsert = emptyBlueprintsCount >= countBookBlueprints and count - countBookBlueprints or emptyBlueprintsCount
+                if not active[1].valid_for_read then
+                  inserted = active.insert{name="blueprint", count = 1}
+                  toInsert = toInsert - inserted
+                  countBookBlueprints = countBookBlueprints + inserted
+                  emptyBlueprintsCount = emptyBlueprintsCount - 1
+                end
+                if emptyBlueprintsCount > 0 then
+                  inserted = inserted + main.insert{name="blueprint", count = toInsert}
+                  countBookBlueprints = countBookBlueprints + inserted
+                end
+                for i=1, inserted do
+                  emptyBlueprints[i].clear()
+                end
+              end
+              if guiSettings.virtualBlueprints > 0 then
+                local virtualBP = guiSettings.virtualBlueprints
+                local toInsert
+                if not active[1].valid_for_read then
+                  inserted = active.insert{name="blueprint", count = 1}
+                  countBookBlueprints = countBookBlueprints + inserted
+                  guiSettings.virtualBlueprints = guiSettings.virtualBlueprints - inserted
+                end
+                if guiSettings.virtualBlueprints > 0 then
+                  toInsert = virtualBP >= countBookBlueprints and count - countBookBlueprints or virtualBP
+                  inserted = main.insert{name="blueprint", count = toInsert}
+                  guiSettings.virtualBlueprints = guiSettings.virtualBlueprints - inserted
+                end
+                countBookBlueprints = main.get_item_count("blueprint") + active.get_item_count("blueprint")
+              end
+            end
+            active = active[1]
             if countBookBlueprints >= count then
               local empty = {}
               local setup = {}
@@ -1269,6 +1355,15 @@ on_gui_click = {
                   if player.cursor_stack.set_stack(cursor_stack) then
                     cursor_stack.clear()
                   end
+                end
+                if guiSettings.useVirtual then
+                  for i=1, #main do
+                    if isValidSlot(main[i],'empty') then
+                      main[i].clear()
+                      guiSettings.virtualBlueprints = guiSettings.virtualBlueprints + 1
+                    end
+                  end
+                  player.print({"msg-virtual-count", guiSettings.virtualBlueprints})
                 end
                 if guiSettings.closeGui and player.gui.left.blueprintWindow then
                   player.gui.left.blueprintWindow.destroy()
@@ -1470,6 +1565,13 @@ on_gui_click = {
         end
         blueprint.set_blueprint_entities(bpEntities)
       end
+    end,
+
+    blueprintSettingsVirtualHelp = function(player, _)
+      player.print({"help-blueprint-virtual1"})
+      player.print({"help-blueprint-virtual2"})
+      player.print({"help-blueprint-virtual3"})
+      player.print({"help-blueprint-virtual4"})
     end,
 
     on_gui_click = function(event_)

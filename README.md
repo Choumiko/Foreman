@@ -29,6 +29,12 @@ Features
  - Rename blueprints
  - Imports/Exports [Blueprint Strings](https://mods.factorio.com/mods/DaveMcW/blueprint-string)  (Thanks Dave!)
 
+###Virtual blueprints
+
+ - If activated in the settings, Foreman will convert empty blueprints in your inventory into virutal blueprints and remove all but one empty blueprint from the inventory.
+ - When trying to load a book Foreman will create empty blueprints if necessary, reducing the number of virtual blueprints accordingly.
+ - When loading a blueprint that has fewer blueprints than the book it's loaded into, Foreman will remove the ones that are not needed and convert them into virtual blueprints
+
 ###Hotkeys
 
  - Toggle the gui: Ctrl + T
@@ -61,8 +67,11 @@ Changelog
 ---
 1.1.3
 
+ - added virtual blueprints option (WIP)
+ - when loading a book, Foreman will insert empty blueprints into the book if necessary
  - fixed "overwrite books" option not clearing blueprints
  - fixed error when using Export all
+ - fixed that exporting blueprints/books would append to the file, instead of overwriting
 
 1.1.2
 
