@@ -1197,6 +1197,9 @@ on_gui_click = {
         game.write_file(filename , stringOutput, false, player.index)
         player.print({"", player.name, " ", {"msg-export-blueprint"}})
         player.print("File: script-output/".. filename)
+      else
+        player.print({"msg-problem-nothing-stored"})
+        return
       end
     end,
 
