@@ -461,7 +461,7 @@ function findBlueprintBook(player, requiredBlueprints, state)
       local itemStack = inv[i]
       if itemStack.valid_for_read and itemStack.type == "blueprint-book" then
         local count = countBlueprints(itemStack, state)
-        totalCount = available + count 
+        totalCount = available + count
         if count >= requiredBlueprints or totalCount >= requiredBlueprints then
           return itemStack, totalCount
         end
@@ -705,6 +705,13 @@ function GUI.destroyImportWindow(guiSettings)
     guiSettings.import.window.destroy()
   end
   guiSettings.import = false
+end
+
+function GUI.destroyMainWindow(player, guiSettings)
+  if player.gui.left.blueprintWindow and player.gui.left.blueprintWindow.valid then
+    player.gui.left.blueprintWindow.destroy()
+  end
+  guiSettings.windowVisable = false
 end
 
 function GUI.refreshOpened(force)
@@ -1042,8 +1049,7 @@ on_gui_click = {
       if player.gui.left.blueprintWindow == nil then
         GUI.createBlueprintWindow(player, global.guiSettings[player.index])
       else
-        player.gui.left.blueprintWindow.destroy()
-        guiSettings.windowVisable = false
+        GUI.destroyMainWindow(player,guiSettings)
         if remote.interfaces.YARM and guiSettings.YARM_old_expando then
           remote.call("YARM", "show_expando", player.index)
         end
@@ -1242,7 +1248,7 @@ on_gui_click = {
             end
           end
           if guiSettings.closeGui and player.gui.left.blueprintWindow then
-            player.gui.left.blueprintWindow.destroy()
+            GUI.destroyMainWindow(player, guiSettings)
             return
           end
         else
@@ -1417,7 +1423,7 @@ on_gui_click = {
                   player.print({"msg-virtual-count", guiSettings.virtualBlueprints})
                 end
                 if guiSettings.closeGui and player.gui.left.blueprintWindow then
-                  player.gui.left.blueprintWindow.destroy()
+                  GUI.destroyMainWindow(player,guiSettings)
                   return
                 end
               else

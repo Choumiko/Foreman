@@ -66,6 +66,10 @@ graphics/save_icon.jpg made by [Freepik](http://www.freepik.com) from [Flaticon]
 ***
 Changelog
 ---
+1.1.4
+
+ - fixed Gui opening for other players
+
 1.1.3
 
  - added virtual blueprints option (WIP)
