@@ -890,6 +890,9 @@ importBlueprintString = function(player, importString, name)
   --  local data, name = removeNameFromBlueprintString(importString)
   --  log(data)
   local data = BlueprintString.fromString(importString)
+  if not name or name == "" then
+    name = data.name
+  end
   if data.book then
     log("Blueprintstring book")
     log(serpent.block(data,{comment=false}))
@@ -1405,6 +1408,7 @@ on_gui_click = {
                 if guiSettings.setCursor and not player.cursor_stack.valid_for_read then
                   if player.cursor_stack.set_stack(cursor_stack) then
                     cursor_stack.clear()
+                    main = player.cursor_stack.get_inventory(defines.inventory.item_main)
                   end
                 end
                 player.print({"msg-blueprint-book-loaded", book.name})

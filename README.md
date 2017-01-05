@@ -69,6 +69,8 @@ Changelog
 
 1.1.5
 
+ - fixed name not being set after importing
+ - fixed error with virtual blueprints and set to cursor option
  - importing from script requires the player to be an admin
 
 1.1.4
