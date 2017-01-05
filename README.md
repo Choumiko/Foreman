@@ -66,6 +66,11 @@ graphics/save_icon.jpg made by [Freepik](http://www.freepik.com) from [Flaticon]
 ***
 Changelog
 ---
+
+1.1.5
+
+ - importing from script requires the player to be an admin
+
 1.1.4
 
  - fixed Gui opening for other players

@@ -1515,6 +1515,11 @@ on_gui_click = {
       -- "do local" type string, can be from export all or a book
       local status, result, script
       if importString:starts_with("do local script") or importString:starts_with("do local foo") then
+        if not player.admin then
+          player.print({"msg-admin-required"})
+          GUI.destroyImportWindow(guiSettings)
+          return
+        end
         result = assert(loadstring(importString))()
         status = result
         script = true
