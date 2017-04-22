@@ -67,6 +67,10 @@ graphics/save_icon.jpg made by [Freepik](http://www.freepik.com) from [Flaticon]
 Changelog
 ---
 
+1.1.6
+
+ - importing from script doesn't require admin anymore (seemed to cause desyncs)
+
 1.1.5
 
  - fixed name not being set after importing
