@@ -138,7 +138,7 @@ saveToFile = function(player, blueprintIndex, book)
   else
     --log("save blueprint")
     blueprintData = global.blueprints[player.force.name][blueprintIndex]
-    stringOutput = addNametoBlueprintString(blueprintData.data, blueprintData.name)
+    stringOutput = addNametoBlueprintString(blueprintData.data, cleanupName(blueprintData.name))
     extension = ".blueprint"
   end
 
@@ -150,7 +150,7 @@ saveToFile = function(player, blueprintIndex, book)
   if filename == nil or filename == "" then
     filename = "export"
   end
-  local folder = player.name ~= "" and player.name:gsub("[/\\:*?\"<>|]", "_") .."/"
+  local folder = player.name ~= "" and player.name:gsub("[/\\:*?\"<>|];", "_") .."/"
   folder = (folder and folder ~= "/") and folder or ""
   filename = "blueprint-string/" .. folder .. filename .. extension
   game.write_file(filename , stringOutput, false, player.index)
@@ -388,7 +388,7 @@ function sortAllBlueprints(forceName)
 end
 
 function cleanupName(name)
-  return string.gsub(name:trim(), "[\\.\"']", "")
+  return string.gsub(name:trim(), "[\\.\"';\\:]", "_")
 end
 
 function countBlueprints(book, state)
@@ -901,7 +901,7 @@ importBlueprintString = function(player, importString, name)
       table.insert(blueprints, {data = BlueprintString.toString(page), name = page.name})
     end
     local tmp = {}
-    tmp.name = data.name or name
+    tmp.name = cleanupName(data.name) or name
     tmp.blueprints = blueprints
     return addBookToTable(player, tmp)
   else

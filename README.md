@@ -70,6 +70,7 @@ Changelog
 1.1.6
 
  - importing from script doesn't require admin anymore (seemed to cause desyncs)
+ - invalid/troubling characters in names are replaced by "_" (so far: ":;\'." )
 
 1.1.5
 
