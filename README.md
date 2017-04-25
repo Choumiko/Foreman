@@ -55,10 +55,6 @@ Features
  - to import a blueprint: copy the contents of the file, open the Foreman gui, click the + button and paste it in the textfield, click import.
 
 
-Todo
----
-- wait for 0.15
-
 Credits
 ---
 graphics/save_icon.jpg made by [Freepik](http://www.freepik.com) from [Flaticon](http://www.flaticon.com) is licensed by [CC 3.0 BY](http://creativecommons.org/licenses/by/3.0/)
@@ -66,6 +62,9 @@ graphics/save_icon.jpg made by [Freepik](http://www.freepik.com) from [Flaticon]
 ***
 Changelog
 ---
+2.0.0
+
+ - version for Factorio 0.15.x
 
 1.1.6
 
