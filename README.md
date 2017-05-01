@@ -17,11 +17,8 @@ Features
 ---
 ###Top buttons:
 
- - Save blueprints from toolbar/cursor
- - Save blueprint books from cursor
  - Import blueprint/books from text
  - Fix positions in blueprints
- - Export all stored blueprints/books (E button)
  - Load multiple blueprints/books (L button)
  
 ###Toolbar:
@@ -34,16 +31,7 @@ Features
 
  - Delete stored blueprints (clicking with a blueprint on the cursor will overwrite instead of deleting)
  - Load blueprint to toolbar or to cursor (if clicked with a blueprint)
- - Export blueprint to file
- - Rename blueprints
  - Imports/Exports [Blueprint Strings](https://mods.factorio.com/mods/DaveMcW/blueprint-string)  (Thanks Dave!)
-
-###Virtual blueprints
-
- - If activated in the settings, Foreman will convert empty blueprints in your inventory into virutal blueprints and remove all but one empty blueprint from the inventory.
- - When trying to load a book Foreman will create empty blueprints if necessary, reducing the number of virtual blueprints accordingly.
- - When loading a blueprint that has fewer blueprints than the book it's loaded into, Foreman will remove the ones that are not needed and convert them into virtual blueprints
- - To convert the virtual blueprints back into normal ones, make sure you have enough space in your inventory and deactivate the setting.
 
 ###Hotkeys
 
@@ -54,19 +42,15 @@ Features
  
  - Show the main button: /c remote.call("foreman", "show")  
  - Hide the main button: /c remote.call("foreman", "hide")
- - Change button order for stored blueprints (L,E,R,D stand for Load, Export, Rename, Delete): /c remote.call("foreman", "setButtonOrder", "LERD")
-
-###Sharing blueprints across saves:
-
- - click the Export/Export all button for the blueprint/book you want to share
- - the files are written to:  C:\Users\"Yor user name"\AppData\Roaming\Factorio\script-output on Windows,  to ~/.factorio/script-output on Linux or to wherever you installed the zip version  
- If you can't find it search your PC for the path/filename Foreman prints ingame when exporting
- - to import a blueprint: copy the contents of the file, open the Foreman gui, click the + button and paste it in the textfield, click import.
-
 
 ***
 Changelog
 ---
+
+2.0.2
+ 
+ - fixed startup error 
+
 2.0.1
 
  - GUI is available from the beginning

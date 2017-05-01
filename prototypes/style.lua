@@ -94,14 +94,6 @@ data:extend({
   },
   {
     type="sprite",
-    name="save_sprite",
-    filename = "__Foreman__/graphics/save_icon.png",
-    priority = "extra-high-no-scale",
-    width = 64,
-    height = 64,
-  },
-  {
-    type="sprite",
     name="main_button_sprite",
     filename = "__Foreman__/graphics/mainbutton.png",
     priority = "extra-high-no-scale",

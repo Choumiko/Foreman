@@ -283,7 +283,7 @@ local function on_configuration_changed(changes)
       end
       Game.print_all("Updated Foreman from ".. oldVersion .. " to " .. newVersion)
     end
-    if newVersion == "2.0.1" then
+    if newVersion == "2.0.1" or newVersion == "2.0.2" then
       for _, player in pairs(game.players) do
         GUI.createUpdateWindow(player)
       end
