@@ -54,7 +54,7 @@ data:extend({
   {
     type="sprite",
     name="settings_sprite",
-    filename = "__core__/graphics/side-menu-icons.png",
+    filename = "__core__/graphics/favourite-grey.png",
     priority = "extra-high-no-scale",
     width = 64,
     height = 64,

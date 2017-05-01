@@ -3,10 +3,11 @@
 Foreman is a mod for manipulating blueprints in game.
 At the moment you can mirror blueprints and replace one entity with another one (for example replace all yellow belts with red belts in a blueprint)
 
-### Foreman 2.0.1 and Factorio 0.15:
+Foreman 2.0.1 and Factorio 0.15:
+---
 
-This is one of the last updates where Foreman will be able to import blueprintstrings. Use the new vanilla blueprint Library (press B by default) to store your blueprints and create strings
-You can no longer export blueprints, only import them from the old BlueprintString/Foreman format. The new vanilla format will not be supported
+This is one of the last updates where Foreman will be able to import blueprintstrings. Use the new vanilla blueprint Library (press B by default) to store your blueprints and create strings.
+You can no longer export blueprints, only import them from the old BlueprintString/Foreman format. The new vanilla format will not be supported.
 Foreman will (given time) turn into a blueprint manipulation tool.
     
 
@@ -62,10 +63,6 @@ Features
  If you can't find it search your PC for the path/filename Foreman prints ingame when exporting
  - to import a blueprint: copy the contents of the file, open the Foreman gui, click the + button and paste it in the textfield, click import.
 
-
-Credits
----
-graphics/save_icon.jpg made by [Freepik](http://www.freepik.com) from [Flaticon](http://www.flaticon.com) is licensed by [CC 3.0 BY](http://creativecommons.org/licenses/by/3.0/)
 
 ***
 Changelog
