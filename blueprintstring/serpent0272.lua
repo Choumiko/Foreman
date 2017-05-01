@@ -36,7 +36,7 @@ local function s(t, opts)
     table.sort(k, function(a,b)
       -- sort numeric keys first: k[key] is not nil for numerical keys
       return (k[a] ~= nil and 0 or to[type(a)] or 'z')..(tostring(a):gsub("%d+",padnum))
-           < (k[b] ~= nil and 0 or to[type(b)] or 'z')..(tostring(b):gsub("%d+",padnum)) end) end
+        < (k[b] ~= nil and 0 or to[type(b)] or 'z')..(tostring(b):gsub("%d+",padnum)) end) end
   local function val2str(t, name, indent, insref, path, plainindex, level)
     local ttype, level, mt = type(t), (level or 0), getmetatable(t)
     local spath, sname = safename(path, name)
@@ -65,9 +65,9 @@ local function s(t, opts)
       for n, key in ipairs(o) do
         local value, ktype, plainindex = t[key], type(key), n <= maxn and not sparse
         if opts.valignore and opts.valignore[value] -- skip ignored values; do nothing
-        or opts.keyallow and not opts.keyallow[key]
-        or opts.valtypeignore and opts.valtypeignore[type(value)] -- skipping ignored value types
-        or sparse and value == nil then -- skipping nils; do nothing
+          or opts.keyallow and not opts.keyallow[key]
+          or opts.valtypeignore and opts.valtypeignore[type(value)] -- skipping ignored value types
+          or sparse and value == nil then -- skipping nils; do nothing
         elseif ktype == 'table' or ktype == 'function' or badtype[ktype] then
           if not seen[key] and not globals[key] then
             sref[#sref+1] = 'placeholder'
@@ -85,16 +85,16 @@ local function s(t, opts)
       local body = table.concat(out, ','..(indent and '\n'..prefix..indent or space))
       local tail = indent and "\n"..prefix..'}' or '}'
       return (custom and custom(tag,head,body,tail) or tag..head..body..tail)..comment(t, level)
-    elseif badtype[ttype] then
-      seen[t] = insref or spath
-      return tag..globerr(t, level)
-    elseif ttype == 'function' then
-      seen[t] = insref or spath
-      local ok, res = pcall(string.dump, t)
-      local func = ok and ((opts.nocode and "function() --[[..skipped..]] end" or
-        "((loadstring or load)("..safestr(res)..",'@serialized'))")..comment(t, level))
-      return tag..(func or globerr(t, level))
-    else return tag..safestr(t) end -- handle all other types
+      elseif badtype[ttype] then
+        seen[t] = insref or spath
+        return tag..globerr(t, level)
+      elseif ttype == 'function' then
+        seen[t] = insref or spath
+        local ok, res = pcall(string.dump, t)
+        local func = ok and ((opts.nocode and "function() --[[..skipped..]] end" or
+          "((loadstring or load)("..safestr(res)..",'@serialized'))")..comment(t, level))
+        return tag..(func or globerr(t, level))
+      else return tag..safestr(t) end -- handle all other types
   end
   local sepr = indent and "\n" or ";"..space
   local body = val2str(t, name, indent) -- this call also populates sref
@@ -111,28 +111,28 @@ local function deserialize(data, opts)
   if not f then return f, res end
   if opts and opts.safe == false then return pcall(f) end
 
-  local count, thread = 0, coroutine.running()
-  local h, m, c = debug.gethook(thread)
+  --  local count, thread = 0, coroutine.running()
+  --  local h, m, c = debug.gethook(thread)
   --debug.sethook(function (e, l) count = count + 1
   --  if count >= 3 then error("cannot call functions") end
   --end, "c")
   -- Timeout check added by David McWilliams
-  local linecount = 0
-  debug.sethook(function (e, l)
-    if (e == "call") then
-      count = count + 1
-      if count >= 3 then error("cannot call functions") end
-    elseif (e == "line") then
-	  linecount = linecount + 1
-      if linecount > 999999 then
-        linecount = 0  -- set again, to give us time to remove the hook
-        error("timeout")
-      end
-    end
-  end, "cl")
+  --  local linecount = 0
+  --  debug.sethook(function (e, l)
+  --    if (e == "call") then
+  --      count = count + 1
+  --      if count >= 3 then error("cannot call functions") end
+  --    elseif (e == "line") then
+  --    linecount = linecount + 1
+  --      if linecount > 999999 then
+  --        linecount = 0  -- set again, to give us time to remove the hook
+  --        error("timeout")
+  --      end
+  --    end
+  --  end, "cl")
   local res = {pcall(f)}
-  count = 0 -- set again, otherwise it's tripped on the next sethook
-  debug.sethook(thread, h, m, c)
+  --  count = 0 -- set again, otherwise it's tripped on the next sethook
+  --  debug.sethook(thread, h, m, c)
   return (table.unpack or unpack)(res)
 end
 

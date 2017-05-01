@@ -62,7 +62,7 @@ function trim(s)
   return (s:gsub("^%s*(.-)%s*$", "%1"))
 end
 
-function item_count(t) 
+function item_count(t)
   local count = 0
   if (#t >= 2) then return 2 end
   for k,v in pairs(t) do count = count + 1 end
@@ -145,7 +145,7 @@ function remove_useless_fields(entities)
 
     -- Entity_number is calculated in fix_entities()
     entity.entity_number = nil
-    
+
     if (item_count(entity) == 0) then entity = nil end
   end
 end
@@ -165,9 +165,9 @@ M.toString = function(blueprint_table)
     for _, page in pairs(blueprint_table.book) do
       remove_useless_fields(page.entities)
       page.name = fix_name(page.name)
-    end   
+    end
   end
-  
+
   local data = serpent.dump(blueprint_table)
   if (M.COMPRESS_STRINGS) then
     data = deflate.gzip(data)
@@ -217,7 +217,15 @@ M.fromString = function(data)
     ["smart-chest"] = "steel-chest",
     ["smart-inserter"] = "filter-inserter",
   })
-    
+
+  -- Factorio 0.14 to 0.15 entity rename
+  data = data:gsub("[%w-]+", {
+    ["diesel-locomotive"] = "locomotive",
+    ["flame-thrower"] = "flamethrower",
+    ["flame-thrower-ammo"] = "flamethrower-ammo",
+    ["small-pump"] = "pump",
+  })
+
   local status, result = serpent.load(data)
   if (not status) then
     --game.player.print(result)
@@ -232,9 +240,9 @@ M.fromString = function(data)
       page.entities = fix_entities(page.entities)
       page.icons = fix_icons(page.icons)
       page.name = fix_name(page.name)
-    end   
+    end
   end
-  
+
   return result
 end
 
