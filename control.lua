@@ -50,7 +50,7 @@ local function init_player(player)
     guiSettings.useVirtual = false
   end
   if not guiSettings.virtualBlueprints then
-    guiSettings.virtualBlueprints = 0
+    guiSettings.virtualBlueprints = 9999
   end
 end
 
@@ -274,6 +274,10 @@ local function on_configuration_changed(changes)
         init_global()
         init_forces()
         init_players(true)
+        for _, settings in pairs(global.guiSettings) do
+          settings.buttonOrder = {"D", "L"}
+          settings.virtualBlueprints = 9999
+        end
       end
       Game.print_all("Updated Foreman from ".. oldVersion .. " to " .. newVersion)
     end
@@ -323,19 +327,9 @@ getBlueprintOnCursor = function (player)
 end
 
 local function clearBlueprintBook(book)
-  local active = book.get_inventory(defines.inventory.item_active)
   local main = book.get_inventory(defines.inventory.item_main)
   local bp
   book.label = ""
-  for i = 1, #active do
-    bp = active[i]
-    if isValidSlot(bp, 'setup') then
-      bp.blueprint_icons = {{index=1, signal={type="item"}}}
-      bp.set_blueprint_entities({})
-      bp.set_blueprint_tiles({})
-      bp.label = ""
-    end
-  end
   for i = 1, #main do
     bp = main[i]
     if isValidSlot(bp, 'setup') then
@@ -387,12 +381,8 @@ function cleanupName(name)
 end
 
 function countBlueprints(book, state)
-  local active = book.get_inventory(defines.inventory.item_active)
   local main = book.get_inventory(defines.inventory.item_main)
   local count = 0
-  if isValidSlot(active[1], state) then
-    count = count + 1
-  end
   for i=1, #main do
     if isValidSlot(main[i], state) then
       count = count + 1
@@ -495,22 +485,10 @@ function GUI.createSettingsWindow(player, guiSettings)
     local hideButton = frame.add{type = "checkbox", name = "blueprintSettingsHideButton", caption = {"lbl-blueprint-hideButton"}, state = guiSettings.hideButton}
     hideButton.tooltip = {"tooltip-blueprint-hideButton"}
 
-    local virtualFlow = frame.add{type = "flow", direction = "horizontal"}
-    local useVirtual = virtualFlow.add{type = "checkbox", name = "blueprintSettingsVirtual", caption = {"lbl-blueprint-virtual", guiSettings.virtualBlueprints}, state = guiSettings.useVirtual, tooltip = {"tooltip-blueprint-virtual"}}
+    --local virtualFlow = frame.add{type = "flow", direction = "horizontal"}
+    --local useVirtual = virtualFlow.add{type = "checkbox", name = "blueprintSettingsVirtual", caption = {"lbl-blueprint-virtual", guiSettings.virtualBlueprints}, state = guiSettings.useVirtual, tooltip = {"tooltip-blueprint-virtual"}}
 
-    virtualFlow.add{type = "button", name="blueprintSettingsVirtualHelp", caption = "?", style = "blueprint_button_style"}
-
-
-    local order = ""
-    for _, button in pairs(guiSettings.buttonOrder) do
-      order = order .. button
-    end
-    local buttonOrderFlow = frame.add{type = "flow", direction = "horizontal"}
-    buttonOrderFlow.add{type = "label", caption = {"window-blueprint-buttonOrder"}, {"tooltip-blueprint-buttonOrder"}}
-
-    local buttonOrder = frame.add{type = "textfield", name = "blueprintSettingsButtonOrder", text = order}
-    buttonOrder.style.minimal_width = 50
-    buttonOrder.tooltip = {"tooltip-blueprint-buttonOrder"}
+    --virtualFlow.add{type = "button", name="blueprintSettingsVirtualHelp", caption = "?", style = "blueprint_button_style"}
 
     local displayCountFlow = frame.add{type="flow", direction="horizontal"}
     displayCountFlow.add{type="label", caption={"window-blueprint-displaycount"}, tooltip = {"tooltip-blueprint-displayCount"}}
@@ -524,7 +502,7 @@ function GUI.createSettingsWindow(player, guiSettings)
     buttonFlow.add{type="button", name="blueprintSettingsCancel", caption={"btn-cancel"}, style = "blueprint_button_style"}
 
     return {overwrite = overwrite, displayCount = displayCount, hotkey = hotkey, setCursor = setCursor, closeGui = closeGui,
-      hideButton = hideButton, buttonOrder = buttonOrder, overwriteBooks = overwriteBooks, useVirtual = useVirtual}
+      hideButton = hideButton, overwriteBooks = overwriteBooks}
   else
     player.gui.center.blueprintSettingsWindow.destroy()
   end
@@ -536,12 +514,6 @@ function GUI.getBookButton(type, index)
   end
   if type == "L" then
     return {type="sprite-button", name=index .. "_blueprintInfoBookLoad", tooltip={"tooltip-blueprint-load"}, sprite="load_book_sprite", style="blueprint_sprite_button"}
-  end
-  --  if type == "E" then
-  --    return {type="sprite-button", name=index .. "_blueprintInfoBookExport", tooltip={"tooltip-blueprint-export"}, sprite="save_sprite", style="blueprint_sprite_button"}
-  --  end
-  if type == "R" then
-    return {type="sprite-button", name=index .. "_blueprintInfoRenameBook", tooltip={"tooltip-blueprint-rename"}, sprite="rename_sprite", style="blueprint_sprite_button"}
   end
 end
 
@@ -565,12 +537,6 @@ function GUI.getButton(type, index)
   end
   if type == "L" then
     return {type="sprite-button", name=index .. "_blueprintInfoLoad",   tooltip={"tooltip-blueprint-load"},   sprite="load_sprite",   style="blueprint_sprite_button"}
-  end
-  --  if type == "E" then
-  --    return {type="sprite-button", name=index .. "_blueprintInfoExport", tooltip={"tooltip-blueprint-export"}, sprite="save_sprite",   style="blueprint_sprite_button"}
-  --  end
-  if type == "R" then
-    return {type="sprite-button", name=index .. "_blueprintInfoRename", tooltip={"tooltip-blueprint-rename"}, sprite="rename_sprite", style="blueprint_sprite_button"}
   end
 end
 
@@ -825,49 +791,6 @@ addBlueprintToTable = function(player, blueprintString, name)
   end
 end
 
-addBlueprintFromCursor = function(player, stack)
-  local blueprintData = getBlueprintData(stack)
-  if blueprintData then
-    blueprintData.name = stack.label and cleanupName(stack.label) or nil
-    local blueprintString = BlueprintString.toString(blueprintData)
-    return addBlueprintToTable(player, blueprintString, blueprintData.name)
-  end
-end
-
-addBookFromCursor = function(player, cursor_stack)
-  local blueprints = {}
-
-  local active = cursor_stack.get_inventory(defines.inventory.item_active)[1]
-  local main = cursor_stack.get_inventory(defines.inventory.item_main)
-  local data
-  local numBooks = #global.books[player.force.name]
-  numBooks = numBooks < 10 and "0" .. numBooks or numBooks
-  local bookName = cursor_stack.label and cleanupName(cursor_stack.label) or "Book_" .. numBooks
-  local num = 0
-  if isValidSlot(active, "setup") then
-    data = getBlueprintData(active)
-    data.name = active.label and active.label or bookName .. "_" .. num
-    data.name = cleanupName(data.name)
-    table.insert(blueprints, {name = data.name, data = BlueprintString.toString(data)})
-    num = num + 1
-  end
-  for i=1, #main do
-    if isValidSlot(main[i], "setup") then
-      data = getBlueprintData(main[i])
-      data.name = main[i].label or bookName .. "_" .. num
-      data.name = cleanupName(data.name)
-      table.insert(blueprints, {name = data.name, data = BlueprintString.toString(data)})
-      num = num + 1
-    end
-  end
-  if #blueprints > 0 then
-    table.insert(global.books[player.force.name], {blueprints = blueprints, name = bookName})
-    Game.print_force(player.force, {"", player.name, ": ",{"msg-blueprint-imported"}})
-    Game.print_force(player.force, "Name: " .. bookName) --TODO localisation
-    return true
-  end
-end
-
 addBookToTable = function(player, book)
   if not book or not book.blueprints then
     player.print({"msg-problem-string"})
@@ -942,7 +865,7 @@ end
 
 setButtonOrder = function(player, orderString)
   local order = {}
-  if not string.len(orderString) == 4 then
+  if not string.len(orderString) == 2 then
     player.print("Invalid order string") --TODO localisation
   else
     for c in orderString:gmatch"." do
@@ -1061,46 +984,19 @@ on_gui_click = {
     -- adds the blueprint or the active blueprint from cursors book
     -- or opens the window to import a string
     blueprintNew = function(player, guiSettings)
-      local cursor_stack = player.cursor_stack
-      if cursor_stack and cursor_stack.valid_for_read and
-        ( ( cursor_stack.type == "blueprint" and cursor_stack.is_blueprint_setup() ) or
-        ( cursor_stack.type == "blueprint-book")
-        )
-      then
-        local blueprint = cursor_stack
-        if cursor_stack.type == "blueprint-book" then
-          if isValidSlot(cursor_stack.get_inventory(defines.inventory.item_active)[1], "setup") then
-            blueprint = cursor_stack.get_inventory(defines.inventory.item_active)[1]
-          else
-            player.print("Click this button with a book and an active blueprint to add the active blueprint only")
-            return
-          end
-        end
-        return addBlueprintFromCursor(player, blueprint)
+      if not guiSettings.import then
+        guiSettings.import = GUI.createImportWindow(player)
       else
-        if not guiSettings.import then
-          guiSettings.import = GUI.createImportWindow(player)
-        else
-          GUI.destroyImportWindow(guiSettings)
-        end
+        GUI.destroyImportWindow(guiSettings)
       end
     end,
 
     -- adds the blueprint on the cursor or opens the import window
     blueprintNewBook = function(player, guiSettings)
-      local cursor_stack = player.cursor_stack
-      if cursor_stack and cursor_stack.valid_for_read then
-        if cursor_stack.type ~= "blueprint-book" then
-          player.print("Click this button with a blueprint book to import it")
-        else
-          return addBookFromCursor(player,cursor_stack)
-        end
+      if not guiSettings.import then
+        guiSettings.import = GUI.createImportWindow(player)
       else
-        if not guiSettings.import then
-          guiSettings.import = GUI.createImportWindow(player)
-        else
-          GUI.destroyImportWindow(guiSettings)
-        end
+        GUI.destroyImportWindow(guiSettings)
       end
     end,
 
@@ -1139,34 +1035,32 @@ on_gui_click = {
           guiSettings.setCursor = guiSettings.windows.setCursor.state
           guiSettings.closeGui = guiSettings.windows.closeGui.state
           guiSettings.hideButton = guiSettings.windows.hideButton.state
-          guiSettings.useVirtual = guiSettings.windows.useVirtual.state
+          --guiSettings.useVirtual = guiSettings.windows.useVirtual.state
           local newInt = tonumber(guiSettings.windows.displayCount.text) or 1
           newInt = newInt > 0 and newInt or 1
           global.guiSettings[player.index].displayCount = newInt
 
-          local orderString = string.upper(string.trim(guiSettings.windows.buttonOrder.text))
-          setButtonOrder(player, orderString)
-          if not guiSettings.useVirtual then
-            if guiSettings.virtualBlueprints > 0 then
-              local inserted = player.insert{name="blueprint", count=guiSettings.virtualBlueprints}
-              player.print({"msg-inventory-virtual-restored", inserted})
-              if not (inserted == guiSettings.virtualBlueprints) then
-                player.print({"msg-inventory-virtual", guiSettings.virtualBlueprints - inserted})
-              end
-              guiSettings.virtualBlueprints = guiSettings.virtualBlueprints - inserted
-            end
-          end
-          if guiSettings.useVirtual then
-            local emptyBPs = findEmptyBlueprints(player)
-            local emptyBPCount = emptyBPs and #emptyBPs or 0
-            if emptyBPs and emptyBPCount > 1 then
-              guiSettings.virtualBlueprints = guiSettings.virtualBlueprints + emptyBPCount - 1
-              for i=1, emptyBPCount - 1 do
-                emptyBPs[i].clear()
-              end
-            end
-            player.print({"msg-virtual-count", guiSettings.virtualBlueprints})
-          end
+          --          if not guiSettings.useVirtual then
+          --            if guiSettings.virtualBlueprints > 0 then
+          --              local inserted = player.insert{name="blueprint", count=guiSettings.virtualBlueprints}
+          --              player.print({"msg-inventory-virtual-restored", inserted})
+          --              if not (inserted == guiSettings.virtualBlueprints) then
+          --                player.print({"msg-inventory-virtual", guiSettings.virtualBlueprints - inserted})
+          --              end
+          --              guiSettings.virtualBlueprints = guiSettings.virtualBlueprints - inserted
+          --            end
+          --          end
+          --          if guiSettings.useVirtual then
+          --            local emptyBPs = findEmptyBlueprints(player)
+          --            local emptyBPCount = emptyBPs and #emptyBPs or 0
+          --            if emptyBPs and emptyBPCount > 1 then
+          --              guiSettings.virtualBlueprints = guiSettings.virtualBlueprints + emptyBPCount - 1
+          --              for i=1, emptyBPCount - 1 do
+          --                emptyBPs[i].clear()
+          --              end
+          --            end
+          --            player.print({"msg-virtual-count", guiSettings.virtualBlueprints})
+          --          end
         end
         player.gui.center.blueprintSettingsWindow.destroy()
         GUI.createBlueprintWindow(player, guiSettings)
@@ -1239,7 +1133,10 @@ on_gui_click = {
       end
 
       local blueprintData = global.blueprints[player.force.name][blueprintIndex]
-
+      if not blueprint then
+        player.insert({name = "blueprint", count = 1})
+        blueprint = findBlueprint(player, "empty")
+      end
       if blueprint ~= nil and blueprintData ~= nil then
         local status, err = setBlueprintData(player.force, blueprint, blueprintData)
         if status then
@@ -1277,9 +1174,13 @@ on_gui_click = {
           if not cursor_stack and guiSettings.overwriteBooks then
             cursor_stack, availableBlueprints = findBlueprintBook(player, count)
             if not cursor_stack then
-              player.print("Not enough blueprints. Need " .. count - availableBlueprints .. " more") --TODO localisation
+              player.print("Not enough blueprints. Need " .. count - availableBlueprints .. " more")
             end
           end
+        end
+        if not cursor_stack then
+          player.cursor_stack.set_stack{name="blueprint-book", count=1}
+          cursor_stack = player.cursor_stack
         end
         if cursor_stack and cursor_stack.valid_for_read then
           if cursor_stack.type == "blueprint" then
@@ -1287,9 +1188,9 @@ on_gui_click = {
             return
           end
           if cursor_stack.type == "blueprint-book" then
-            local active = cursor_stack.get_inventory(defines.inventory.item_active)
+            --local active_index = cursor_stack.active_index
             local main = cursor_stack.get_inventory(defines.inventory.item_main)
-            local countBookBlueprints = main.get_item_count("blueprint") + active.get_item_count("blueprint")
+            local countBookBlueprints = main.get_item_count("blueprint")
             if guiSettings.overwriteBooks then
               clearBlueprintBook(cursor_stack)
             end
@@ -1298,27 +1199,9 @@ on_gui_click = {
             if countBookBlueprints < count then
               local inserted
               local toInsert = count - countBookBlueprints
-              if guiSettings.virtualBlueprints > 0 then
-                local virtualBP = guiSettings.virtualBlueprints
-                if not active[1].valid_for_read then
-                  inserted = active.insert{name="blueprint", count = 1}
-                  countBookBlueprints = countBookBlueprints + inserted
-                  guiSettings.virtualBlueprints = guiSettings.virtualBlueprints - inserted
-                  toInsert = toInsert - inserted
-                  --("inserted virtual in active: " .. inserted)
-                  --log("toInsert: ".. toInsert)
-                  --log("in book: " .. countBookBlueprints)
-                end
-                if guiSettings.virtualBlueprints > 0 and toInsert > 0 then
-                  toInsert = virtualBP >= toInsert and toInsert or virtualBP
-                  inserted = main.insert{name="blueprint", count = toInsert}
-                  countBookBlueprints = countBookBlueprints + inserted
-                  guiSettings.virtualBlueprints = guiSettings.virtualBlueprints - inserted
-                  --log("inserted virtual in main: " .. inserted)
-                  --log("toInsert: ".. toInsert)
-                  --log("in book: " .. countBookBlueprints)
-                end
-                player.print({"msg-virtual-count", guiSettings.virtualBlueprints})
+              if toInsert > 0 then
+                inserted = main.insert{name="blueprint", count = toInsert}
+                countBookBlueprints = countBookBlueprints + inserted
               end
               if countBookBlueprints < count then
                 --log("inserting empties")
@@ -1327,15 +1210,6 @@ on_gui_click = {
                   local emptyBlueprintsCount = #emptyBlueprints
                   toInsert = emptyBlueprintsCount >= count - countBookBlueprints and count - countBookBlueprints or emptyBlueprintsCount
                   inserted = 0
-                  if not active[1].valid_for_read then
-                    inserted = active.insert{name="blueprint", count = 1}
-                    toInsert = toInsert - inserted
-                    countBookBlueprints = countBookBlueprints + inserted
-                    emptyBlueprintsCount = emptyBlueprintsCount - 1
-                    --log("inserted empty in active: " .. inserted)
-                    --log("toInsert: ".. toInsert)
-                    --log("in book: " .. countBookBlueprints)
-                  end
                   if emptyBlueprintsCount > 0 and toInsert > 0 then
                     inserted = inserted + main.insert{name="blueprint", count = toInsert}
                     countBookBlueprints = countBookBlueprints + inserted
@@ -1351,18 +1225,10 @@ on_gui_click = {
                 end
               end
             end
-            active = active[1]
             if countBookBlueprints >= count then
               local empty = {}
               local setup = {}
               local emptyCount = 0
-              if isValidSlot(active,'empty') then
-                table.insert(empty, active)
-                emptyCount = emptyCount + 1
-              end
-              if isValidSlot(active, "setup") then
-                table.insert(setup, active)
-              end
               for i=1, #main do
                 if isValidSlot(main[i],'empty') then
                   table.insert(empty, main[i])
@@ -1415,15 +1281,8 @@ on_gui_click = {
                   for i=1, #main do
                     if isValidSlot(main[i],'empty') then
                       main[i].clear()
-                      guiSettings.virtualBlueprints = guiSettings.virtualBlueprints + 1
                     end
                   end
-                end
-                if guiSettings.virtualBlueprints > 0 and countEmptyBlueprints(player) == 0 then
-                  guiSettings.virtualBlueprints = guiSettings.virtualBlueprints - player.insert{name="blueprint", count=1}
-                end
-                if guiSettings.useVirtual or guiSettings.virtualBlueprints > 0 then
-                  player.print({"msg-virtual-count", guiSettings.virtualBlueprints})
                 end
                 if guiSettings.closeGui and player.gui.left.blueprintWindow then
                   GUI.destroyMainWindow(player,guiSettings)
@@ -1630,13 +1489,6 @@ on_gui_click = {
         end
         blueprint.set_blueprint_entities(bpEntities)
       end
-    end,
-
-    blueprintSettingsVirtualHelp = function(player, _)
-      player.print({"help-blueprint-virtual1"})
-      player.print({"help-blueprint-virtual2"})
-      player.print({"help-blueprint-virtual3"})
-      player.print({"help-blueprint-virtual4"})
     end,
 
     on_gui_click = function(event_)
