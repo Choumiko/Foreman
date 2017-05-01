@@ -277,13 +277,13 @@ local function on_configuration_changed(changes)
         init_forces()
         init_players(true)
         for _, settings in pairs(global.guiSettings) do
-          settings.buttonOrder = {"D", "L"}
+          settings.buttonOrder = {"D", "L", "R"}
           settings.virtualBlueprints = 9999
         end
       end
       Game.print_all("Updated Foreman from ".. oldVersion .. " to " .. newVersion)
     end
-    if newVersion == "2.0.1" or newVersion == "2.0.2" then
+    if newVersion == "2.0.1" or newVersion == "2.0.2" or newVersion == "2.0.3" then
       for _, player in pairs(game.players) do
         GUI.createUpdateWindow(player)
       end
@@ -490,6 +490,17 @@ function GUI.createSettingsWindow(player, guiSettings)
     local hideButton = frame.add{type = "checkbox", name = "blueprintSettingsHideButton", caption = {"lbl-blueprint-hideButton"}, state = guiSettings.hideButton}
     hideButton.tooltip = {"tooltip-blueprint-hideButton"}
 
+    local order = ""
+    for _, button in pairs(guiSettings.buttonOrder) do
+      order = order .. button
+    end
+    local buttonOrderFlow = frame.add{type = "flow", direction = "horizontal"}
+    buttonOrderFlow.add{type = "label", caption = {"window-blueprint-buttonOrder"}, {"tooltip-blueprint-buttonOrder"}}
+
+    local buttonOrder = frame.add{type = "textfield", name = "blueprintSettingsButtonOrder", text = order}
+    buttonOrder.style.minimal_width = 50
+    buttonOrder.tooltip = {"tooltip-blueprint-buttonOrder"}
+
     local displayCountFlow = frame.add{type="flow", direction="horizontal"}
     displayCountFlow.add{type="label", caption={"window-blueprint-displaycount"}, tooltip = {"tooltip-blueprint-displayCount"}}
 
@@ -502,7 +513,7 @@ function GUI.createSettingsWindow(player, guiSettings)
     buttonFlow.add{type="button", name="blueprintSettingsCancel", caption={"btn-cancel"}, style = "blueprint_button_style"}
 
     return {overwrite = overwrite, displayCount = displayCount, hotkey = hotkey, setCursor = setCursor, closeGui = closeGui,
-      hideButton = hideButton, overwriteBooks = overwriteBooks}
+      hideButton = hideButton, buttonOrder = buttonOrder, overwriteBooks = overwriteBooks}
   else
     player.gui.center.blueprintSettingsWindow.destroy()
   end
@@ -518,10 +529,11 @@ function GUI.createUpdateWindow(player, _)
     }
     local message = frame.add{type="label", name = "updateLabel", single_line = false, caption = ""}
     local caption1 = "This is one of the last updates where Foreman will be able to import blueprintstrings. Use the new vanilla blueprint Library (press B by default) to store your blueprints and create strings\n"
-    local caption2 = "You can no longer export blueprints, only import them from the old BlueprintString/Foreman format. The new vanilla format will not be supported\n\n"
+    local caption2 = "You can no longer export blueprints, only import them from the old BlueprintString/Foreman format. The new vanilla format will not be supported\n"
+    local caption2a = "Depending on how the modding API for the library turns out i might keep up the ability to store blueprints in Foreman.\n\n"
     local caption3 = "Foreman will (given time) turn into a blueprint manipulation tool."
-    
-    message.caption = caption1 .. caption2 .. caption3
+
+    message.caption = caption1 .. caption2 .. caption2a .. caption3
     frame.add{type="button", name="blueprintUpdateRead", caption = "Close", style = "blueprint_button_style"}
   else
     player.gui.center.blueprintUpdateWindow.destroy()
@@ -557,6 +569,10 @@ function GUI.getButton(type, index)
   end
   if type == "L" then
     return {type="sprite-button", name=index .. "_blueprintInfoLoad",   tooltip={"tooltip-blueprint-load"},   sprite="load_sprite",   style="blueprint_sprite_button"}
+  end
+
+  if type == "R" then
+    return {type="sprite-button", name=index .. "_blueprintInfoRenameBook", tooltip={"tooltip-blueprint-rename"}, sprite="rename_sprite", style="blueprint_sprite_button"}
   end
 end
 
@@ -703,6 +719,42 @@ function GUI.refreshOpened(force)
     if guiSettings and guiSettings.windowVisable then
       GUI.createBlueprintWindow(p, guiSettings)
     end
+  end
+end
+
+addBlueprintFromCursor = function(player, stack)
+  local blueprintData = getBlueprintData(stack)
+  if blueprintData then
+    blueprintData.name = stack.label and cleanupName(stack.label) or nil
+    local blueprintString = BlueprintString.toString(blueprintData)
+    return addBlueprintToTable(player, blueprintString, blueprintData.name)
+  end
+end
+
+addBookFromCursor = function(player, cursor_stack)
+  local blueprints = {}
+
+  local main = cursor_stack.get_inventory(defines.inventory.item_main)
+  local data
+  local numBooks = #global.books[player.force.name]
+  numBooks = numBooks < 10 and "0" .. numBooks or numBooks
+  local bookName = cursor_stack.label and cleanupName(cursor_stack.label) or "Book_" .. numBooks
+  local num = 0
+
+  for i=1, #main do
+    if isValidSlot(main[i], "setup") then
+      data = getBlueprintData(main[i])
+      data.name = main[i].label or bookName .. "_" .. num
+      data.name = cleanupName(data.name)
+      table.insert(blueprints, {name = data.name, data = BlueprintString.toString(data)})
+      num = num + 1
+    end
+  end
+  if #blueprints > 0 then
+    table.insert(global.books[player.force.name], {blueprints = blueprints, name = bookName})
+    Game.print_force(player.force, {"", player.name, ": ",{"msg-blueprint-imported"}})
+    Game.print_force(player.force, "Name: " .. bookName) --TODO localisation
+    return true
   end
 end
 
@@ -882,7 +934,7 @@ end
 
 setButtonOrder = function(player, orderString)
   local order = {}
-  if not string.len(orderString) == 2 then
+  if not string.len(orderString) == 3 then
     player.print("Invalid order string") --TODO localisation
   else
     for c in orderString:gmatch"." do
@@ -1004,10 +1056,23 @@ on_gui_click = {
 
     -- opens the window to import a string
     blueprintNew = function(player, guiSettings)
-      if not guiSettings.import then
-        guiSettings.import = GUI.createImportWindow(player)
+      local cursor_stack = player.cursor_stack
+      if cursor_stack and cursor_stack.valid_for_read and
+        ( ( cursor_stack.type == "blueprint" and cursor_stack.is_blueprint_setup() ) or
+        ( cursor_stack.type == "blueprint-book")
+        )
+      then
+        local blueprint = cursor_stack
+        if cursor_stack.type == "blueprint-book" then
+          return addBookFromCursor(player,blueprint)
+        end
+        return addBlueprintFromCursor(player, blueprint)
       else
-        GUI.destroyImportWindow(guiSettings)
+        if not guiSettings.import then
+          guiSettings.import = GUI.createImportWindow(player)
+        else
+          GUI.destroyImportWindow(guiSettings)
+        end
       end
     end,
 
@@ -1050,7 +1115,10 @@ on_gui_click = {
           local newInt = tonumber(guiSettings.windows.displayCount.text) or 1
           newInt = newInt > 0 and newInt or 1
           global.guiSettings[player.index].displayCount = newInt
-
+          
+          local orderString = string.upper(string.trim(guiSettings.windows.buttonOrder.text))
+          setButtonOrder(player, orderString)
+          
           --          if not guiSettings.useVirtual then
           --            if guiSettings.virtualBlueprints > 0 then
           --              local inserted = player.insert{name="blueprint", count=guiSettings.virtualBlueprints}

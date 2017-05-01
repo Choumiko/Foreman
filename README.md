@@ -6,8 +6,10 @@ At the moment you can mirror blueprints and replace one entity with another one 
 Foreman 2.0.1 and Factorio 0.15:
 ---
 
-This is one of the last updates where Foreman will be able to import blueprintstrings. Use the new vanilla blueprint Library (press B by default) to store your blueprints and create strings.
+This is probably one of the last updates where Foreman will be able to import blueprintstrings. Use the new vanilla blueprint Library (press B by default) to store your blueprints and create strings.
 You can no longer export blueprints, only import them from the old BlueprintString/Foreman format. The new vanilla format will not be supported.
+Depending on how the modding API for the library turns out i might keep up the ability to store blueprints in Foreman.
+
 Foreman will (given time) turn into a blueprint manipulation tool.
     
 
@@ -46,6 +48,10 @@ Features
 ***
 Changelog
 ---
+
+2.0.3
+
+ - some more fixes
 
 2.0.2
  

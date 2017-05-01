@@ -56,8 +56,8 @@ data:extend({
     name="settings_sprite",
     filename = "__core__/graphics/favourite-grey.png",
     priority = "extra-high-no-scale",
-    width = 64,
-    height = 64,
+    width = 128,
+    height = 128,
     x = 0,
   },
   {
