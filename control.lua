@@ -6,6 +6,8 @@ require 'stdlib.game'
 BlueprintString = require 'blueprintstring.blueprintstring'
 serpent = require 'blueprintstring.serpent0272'
 
+GUI = {}
+
 function debugLog(message, force)
   if false or force then -- set for debug
     for _,player in pairs(game.players) do
@@ -281,6 +283,11 @@ local function on_configuration_changed(changes)
       end
       Game.print_all("Updated Foreman from ".. oldVersion .. " to " .. newVersion)
     end
+    if newVersion == "2.0.1" then
+      for _, player in pairs(game.players) do
+        GUI.createUpdateWindow(player)
+      end
+    end
     global.version = newVersion
   end
   --check for other mods
@@ -456,8 +463,6 @@ function findBlueprintBook(player, requiredBlueprints, state)
   return nil, totalCount + available
 end
 
-GUI = {}
-
 function GUI.createSettingsWindow(player, guiSettings)
   if not player.gui.center.blueprintSettingsWindow then
     local frame = player.gui.center.add{
@@ -485,11 +490,6 @@ function GUI.createSettingsWindow(player, guiSettings)
     local hideButton = frame.add{type = "checkbox", name = "blueprintSettingsHideButton", caption = {"lbl-blueprint-hideButton"}, state = guiSettings.hideButton}
     hideButton.tooltip = {"tooltip-blueprint-hideButton"}
 
-    --local virtualFlow = frame.add{type = "flow", direction = "horizontal"}
-    --local useVirtual = virtualFlow.add{type = "checkbox", name = "blueprintSettingsVirtual", caption = {"lbl-blueprint-virtual", guiSettings.virtualBlueprints}, state = guiSettings.useVirtual, tooltip = {"tooltip-blueprint-virtual"}}
-
-    --virtualFlow.add{type = "button", name="blueprintSettingsVirtualHelp", caption = "?", style = "blueprint_button_style"}
-
     local displayCountFlow = frame.add{type="flow", direction="horizontal"}
     displayCountFlow.add{type="label", caption={"window-blueprint-displaycount"}, tooltip = {"tooltip-blueprint-displayCount"}}
 
@@ -505,6 +505,26 @@ function GUI.createSettingsWindow(player, guiSettings)
       hideButton = hideButton, overwriteBooks = overwriteBooks}
   else
     player.gui.center.blueprintSettingsWindow.destroy()
+  end
+end
+
+function GUI.createUpdateWindow(player, _)
+  if not player.gui.center.blueprintUpdateWindow then
+    local frame = player.gui.center.add{
+      type="frame",
+      name="blueprintUpdateWindow",
+      direction="vertical",
+      caption="Foreman Update"
+    }
+    local message = frame.add{type="label", name = "updateLabel", single_line = false, caption = ""}
+    local caption1 = "This is one of the last updates where Foreman will be able to import blueprintstrings. Use the new vanilla blueprint Library (press B by default) to store your blueprints and create strings\n"
+    local caption2 = "You can no longer export blueprints, only import them from the old BlueprintString/Foreman format. The new vanilla format will not be supported\n\n"
+    local caption3 = "Foreman will (given time) turn into a blueprint manipulation tool."
+    
+    message.caption = caption1 .. caption2 .. caption3
+    frame.add{type="button", name="blueprintUpdateRead", caption = "Close", style = "blueprint_button_style"}
+  else
+    player.gui.center.blueprintUpdateWindow.destroy()
   end
 end
 
@@ -576,11 +596,8 @@ function GUI.createBlueprintWindow(player, guiSettings)
 
   buttons.add({type="sprite-button", name="blueprintNew", tooltip={"tooltip-blueprint-import"}, sprite="add_sprite", style="blueprint_sprite_button"})
 
-  buttons.add{type="sprite-button", name="blueprintNewBook", tooltip={"tooltip-blueprint-import-book"}, style="blueprint_sprite_button", sprite="add_book_sprite"}
-
   buttons.add({type="sprite-button", name="blueprintFixPositions", tooltip={"tooltip-blueprint-fix"}, style="blueprint_sprite_button", sprite="item/repair-pack"})
 
-  --buttons.add({type="button", name="blueprintExportAll", tooltip={"tooltip-blueprint-export-all"}, caption="E", style="blueprint_button_style"})
   buttons.add({type="button", name="blueprintImportAll", tooltip={"tooltip-blueprint-import-all"}, caption="L", style="blueprint_button_style"})
   buttons.add({type="sprite-button", name="blueprintSettings", tooltip={"window-blueprint-settings"}, sprite="settings_sprite", style="blueprint_sprite_button"})
 
@@ -970,6 +987,10 @@ end
 
 on_gui_click = {
 
+    blueprintUpdateRead = function(player, guiSettings)
+      GUI.createUpdateWindow(player,guiSettings)
+    end,
+
     blueprintTools = function(player, guiSettings)
       if player.gui.left.blueprintWindow == nil then
         GUI.createBlueprintWindow(player, global.guiSettings[player.index])
@@ -981,18 +1002,8 @@ on_gui_click = {
       end
     end,
 
-    -- adds the blueprint or the active blueprint from cursors book
-    -- or opens the window to import a string
+    -- opens the window to import a string
     blueprintNew = function(player, guiSettings)
-      if not guiSettings.import then
-        guiSettings.import = GUI.createImportWindow(player)
-      else
-        GUI.destroyImportWindow(guiSettings)
-      end
-    end,
-
-    -- adds the blueprint on the cursor or opens the import window
-    blueprintNewBook = function(player, guiSettings)
       if not guiSettings.import then
         guiSettings.import = GUI.createImportWindow(player)
       else
