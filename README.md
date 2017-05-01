@@ -62,6 +62,11 @@ graphics/save_icon.jpg made by [Freepik](http://www.freepik.com) from [Flaticon]
 ***
 Changelog
 ---
+2.0.1
+
+ - GUI is available from the beginning
+ - removed the export buttons. Use the vanilla Library/string instead
+
 2.0.0
 
  - version for Factorio 0.15.x

@@ -90,7 +90,7 @@ local function init_force(force)
     init_global()
   end
   local name = force.name
-  global.unlocked[name] = force.technologies["automated-construction"].researched
+  global.unlocked[name] = true
   global.blueprints[name] = global.blueprints[name] or {}
   global.books[name] = global.books[name] or {}
 end
@@ -270,6 +270,11 @@ local function on_configuration_changed(changes)
       if oldVersion < "1.1.3" then
         init_players()
       end
+      if oldVersion < "2.0.1" then
+        init_global()
+        init_forces()
+        init_players(true)
+      end
       Game.print_all("Updated Foreman from ".. oldVersion .. " to " .. newVersion)
     end
     global.version = newVersion
@@ -285,22 +290,12 @@ function on_player_created(event)
   end
 end
 
-local function on_research_finished(event)
-  if event.research ~= nil and event.research.name == "automated-construction" then
-    global.unlocked[event.research.force.name] = true
-    for _, player in pairs(event.research.force.players) do
-      createBlueprintButton(player, global.guiSettings[player.index])
-    end
-  end
-end
-
 script.on_init(on_init)
 script.on_configuration_changed(on_configuration_changed)
 script.on_event(defines.events.on_player_created, on_player_created)
 script.on_event(defines.events.on_force_created, function(event) init_force(event.force) end)
 
 --script.on_event(defines.events.on_forces_merging, on_forces_merging)
-script.on_event(defines.events.on_research_finished, on_research_finished)
 
 isValidSlot = function(slot, state)
   if not slot or not slot.valid_for_read then return false end
@@ -542,9 +537,9 @@ function GUI.getBookButton(type, index)
   if type == "L" then
     return {type="sprite-button", name=index .. "_blueprintInfoBookLoad", tooltip={"tooltip-blueprint-load"}, sprite="load_book_sprite", style="blueprint_sprite_button"}
   end
-  if type == "E" then
-    return {type="sprite-button", name=index .. "_blueprintInfoBookExport", tooltip={"tooltip-blueprint-export"}, sprite="save_sprite", style="blueprint_sprite_button"}
-  end
+  --  if type == "E" then
+  --    return {type="sprite-button", name=index .. "_blueprintInfoBookExport", tooltip={"tooltip-blueprint-export"}, sprite="save_sprite", style="blueprint_sprite_button"}
+  --  end
   if type == "R" then
     return {type="sprite-button", name=index .. "_blueprintInfoRenameBook", tooltip={"tooltip-blueprint-rename"}, sprite="rename_sprite", style="blueprint_sprite_button"}
   end
@@ -557,7 +552,9 @@ function GUI.createBlueprintFrameBook(gui, index, caption, countBP, guiSettings)
   local frame = gui.add({type="frame", direction="horizontal", style="blueprint_thin_frame"})
   local buttonFlow = frame.add({type="flow", direction="horizontal", style="blueprint_button_flow"})
   for _, type in pairs(guiSettings.buttonOrder) do
-    buttonFlow.add(GUI.getBookButton(type,index))
+    if type ~= "E" then
+      buttonFlow.add(GUI.getBookButton(type,index))
+    end
   end
   frame.add{type="label", caption=caption, style="blueprint_label_style", tooltip = {"", countBP, " ", {"item-name.blueprint"}}}
 end
@@ -569,9 +566,9 @@ function GUI.getButton(type, index)
   if type == "L" then
     return {type="sprite-button", name=index .. "_blueprintInfoLoad",   tooltip={"tooltip-blueprint-load"},   sprite="load_sprite",   style="blueprint_sprite_button"}
   end
-  if type == "E" then
-    return {type="sprite-button", name=index .. "_blueprintInfoExport", tooltip={"tooltip-blueprint-export"}, sprite="save_sprite",   style="blueprint_sprite_button"}
-  end
+  --  if type == "E" then
+  --    return {type="sprite-button", name=index .. "_blueprintInfoExport", tooltip={"tooltip-blueprint-export"}, sprite="save_sprite",   style="blueprint_sprite_button"}
+  --  end
   if type == "R" then
     return {type="sprite-button", name=index .. "_blueprintInfoRename", tooltip={"tooltip-blueprint-rename"}, sprite="rename_sprite", style="blueprint_sprite_button"}
   end
@@ -585,7 +582,9 @@ function GUI.createBlueprintFrame(gui, index, caption, guiSettings)
   local buttonFlow = frame.add({type="flow", direction="horizontal", style="blueprint_button_flow"})
 
   for _, type in pairs(guiSettings.buttonOrder) do
-    buttonFlow.add(GUI.getButton(type,index))
+    if type ~= "E" then
+      buttonFlow.add(GUI.getButton(type,index))
+    end
   end
   frame.add({type="label", caption=caption, style="blueprint_label_style"})
 end
@@ -615,7 +614,7 @@ function GUI.createBlueprintWindow(player, guiSettings)
 
   buttons.add({type="sprite-button", name="blueprintFixPositions", tooltip={"tooltip-blueprint-fix"}, style="blueprint_sprite_button", sprite="item/repair-pack"})
 
-  buttons.add({type="button", name="blueprintExportAll", tooltip={"tooltip-blueprint-export-all"}, caption="E", style="blueprint_button_style"})
+  --buttons.add({type="button", name="blueprintExportAll", tooltip={"tooltip-blueprint-export-all"}, caption="E", style="blueprint_button_style"})
   buttons.add({type="button", name="blueprintImportAll", tooltip={"tooltip-blueprint-import-all"}, caption="L", style="blueprint_button_style"})
   buttons.add({type="sprite-button", name="blueprintSettings", tooltip={"window-blueprint-settings"}, sprite="settings_sprite", style="blueprint_sprite_button"})
 
@@ -1519,11 +1518,11 @@ on_gui_click = {
       -- "do local" type string, can be from export all or a book
       local status, result, script
       if importString:starts_with("do local script") or importString:starts_with("do local foo") then
---        if not player.admin then
---          player.print({"msg-admin-required"})
---          GUI.destroyImportWindow(guiSettings)
---          return
---        end
+        --        if not player.admin then
+        --          player.print({"msg-admin-required"})
+        --          GUI.destroyImportWindow(guiSettings)
+        --          return
+        --        end
         result = assert(loadstring(importString))()
         status = result
         script = true
