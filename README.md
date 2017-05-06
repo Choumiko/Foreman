@@ -48,6 +48,9 @@ Features
 ***
 Changelog
 ---
+2.0.4
+
+ - added error message when trying to import a vanilla blueprint string
 
 2.0.3
 

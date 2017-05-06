@@ -542,10 +542,13 @@ end
 
 function GUI.getBookButton(type, index)
   if type == "D" then
-    return {type="sprite-button", name=index .. "_blueprintInfoBookDelete", tooltip={"tooltip-blueprint-delete"}, sprite="delete_sprite", style="blueprint_sprite_button"}
+    return {type="sprite-button", name=index .. "_blueprintInfoBookDelete", tooltip={"tooltip-blueprint-delete"}, sprite="utility/remove", style="blueprint_sprite_button"}
   end
   if type == "L" then
     return {type="sprite-button", name=index .. "_blueprintInfoBookLoad", tooltip={"tooltip-blueprint-load"}, sprite="load_book_sprite", style="blueprint_sprite_button"}
+  end
+  if type == "R" then
+    return {type="sprite-button", name=index .. "_blueprintInfoRenameBook", tooltip={"tooltip-blueprint-rename"}, sprite="utility/rename_icon_normal", style="blueprint_sprite_button"}
   end
 end
 
@@ -565,14 +568,14 @@ end
 
 function GUI.getButton(type, index)
   if type == "D" then
-    return {type="sprite-button", name=index .. "_blueprintInfoDelete", tooltip={"tooltip-blueprint-delete"}, sprite="delete_sprite", style="blueprint_sprite_button"}
+    return {type="sprite-button", name=index .. "_blueprintInfoDelete", tooltip={"tooltip-blueprint-delete"}, sprite="utility/remove", style="blueprint_sprite_button"}
   end
   if type == "L" then
     return {type="sprite-button", name=index .. "_blueprintInfoLoad",   tooltip={"tooltip-blueprint-load"},   sprite="load_sprite",   style="blueprint_sprite_button"}
   end
 
   if type == "R" then
-    return {type="sprite-button", name=index .. "_blueprintInfoRenameBook", tooltip={"tooltip-blueprint-rename"}, sprite="rename_sprite", style="blueprint_sprite_button"}
+    return {type="sprite-button", name=index .. "_blueprintInfoRename", tooltip={"tooltip-blueprint-rename"}, sprite="utility/rename_icon_normal", style="blueprint_sprite_button"}
   end
 end
 
@@ -610,7 +613,7 @@ function GUI.createBlueprintWindow(player, guiSettings)
 
   local buttons = window.add({type="frame", direction="horizontal", style="blueprint_thin_frame"})
 
-  buttons.add({type="sprite-button", name="blueprintNew", tooltip={"tooltip-blueprint-import"}, sprite="add_sprite", style="blueprint_sprite_button"})
+  buttons.add({type="sprite-button", name="blueprintNew", tooltip={"tooltip-blueprint-import"}, sprite="utility/add", style="blueprint_sprite_button"})
 
   buttons.add({type="sprite-button", name="blueprintFixPositions", tooltip={"tooltip-blueprint-fix"}, style="blueprint_sprite_button", sprite="item/repair-pack"})
 
@@ -1115,10 +1118,10 @@ on_gui_click = {
           local newInt = tonumber(guiSettings.windows.displayCount.text) or 1
           newInt = newInt > 0 and newInt or 1
           global.guiSettings[player.index].displayCount = newInt
-          
+
           local orderString = string.upper(string.trim(guiSettings.windows.buttonOrder.text))
           setButtonOrder(player, orderString)
-          
+
           --          if not guiSettings.useVirtual then
           --            if guiSettings.virtualBlueprints > 0 then
           --              local inserted = player.insert{name="blueprint", count=guiSettings.virtualBlueprints}
@@ -1443,6 +1446,11 @@ on_gui_click = {
       local importString = guiSettings.import.importString.text
       if not importString or importString == "" then
         player.print({"msg-empty-string"})
+        GUI.destroyImportWindow(guiSettings)
+        return
+      end
+      if importString:starts_with("0") then
+        player.print({"msg-vanilla-string"})
         GUI.destroyImportWindow(guiSettings)
         return
       end

@@ -37,36 +37,11 @@ data.raw["gui-style"].default["blueprint_sprite_button"] =
 data:extend({
   {
     type="sprite",
-    name="rename_sprite",
-    filename = "__core__/graphics/rename-small.png",
-    priority = "extra-high-no-scale",
-    width = 16,
-    height = 16,
-  },
-  {
-    type="sprite",
-    name="delete_sprite",
-    filename = "__core__/graphics/remove-icon.png",
-    priority = "extra-high-no-scale",
-    width = 64,
-    height = 64,
-  },
-  {
-    type="sprite",
     name="settings_sprite",
     filename = "__core__/graphics/favourite-grey.png",
     priority = "extra-high-no-scale",
     width = 128,
     height = 128,
-    x = 0,
-  },
-  {
-    type="sprite",
-    name="add_sprite",
-    filename = "__core__/graphics/add-icon.png",
-    priority = "extra-high-no-scale",
-    width = 32,
-    height = 32,
   },
   {
     type="sprite",
