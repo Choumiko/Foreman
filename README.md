@@ -50,6 +50,7 @@ Changelog
 ---
 2.0.4
 
+ - fixed error when mirroring the active blueprint in a book
  - added error message when trying to import a vanilla blueprint string
 
 2.0.3

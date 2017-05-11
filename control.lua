@@ -326,8 +326,11 @@ getBlueprintOnCursor = function (player)
   if stack.valid_for_read then
     if (stack.type == "blueprint" and isValidSlot(stack, 'setup')) then
       return stack
-    elseif (stack.type == "blueprint-book" and isValidSlot(stack.get_inventory(defines.inventory.item_active)[1], 'setup')) then
-      return stack.get_inventory(defines.inventory.item_active)[1]
+    elseif stack.type == "blueprint-book" then
+      local active = stack.get_inventory(defines.inventory.item_main)[stack.active_index]
+      if isValidSlot(active, 'setup') then
+        return active
+      end
     end
   end
   return false
@@ -1198,7 +1201,7 @@ on_gui_click = {
         if cursor_stack.type == "blueprint" then
           blueprint = cursor_stack
         elseif cursor_stack.type == "blueprint-book" then
-          local active = cursor_stack.get_inventory(defines.inventory.item_active)[1]
+          local active = cursor_stack.get_inventory(defines.inventory.item_main)[cursor_stack.active_index]
           if isValidSlot(active,'empty') then
             blueprint = active
           else
