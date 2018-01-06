@@ -611,7 +611,7 @@ function GUI.createBlueprintWindow(player, guiSettings)
     guiSettings.YARM_old_expando = remote.call("YARM", "hide_expando", player.index)
   end
 
-  local window = gui.add({type="flow", name="blueprintWindow", direction="vertical", style="blueprint_thin_flow"}) --style="fatcontroller_thin_frame"})  ,caption={"msg-blueprint-window"}
+  local window = gui.add({type="flow", name="blueprintWindow", direction="vertical", style="blueprint_thin_flow_vertical"}) --style="fatcontroller_thin_frame"})  ,caption={"msg-blueprint-window"}
   guiSettings.window = window
 
   local buttons = window.add({type="frame", direction="horizontal", style="blueprint_thin_frame"})
@@ -643,7 +643,7 @@ function GUI.createBlueprintWindow(player, guiSettings)
   frame.style.right_padding = 0
   frame.style.top_padding = 0
   frame.style.bottom_padding = 0
-  frame.style.resize_row_to_width=true
+  frame.style.horizontally_stretchable = true
   local pane = frame.add{
     type = "scroll-pane",
     style = "blueprint_scroll_style"
@@ -654,7 +654,7 @@ function GUI.createBlueprintWindow(player, guiSettings)
   local flow = pane.add{
     type="flow",
     direction="vertical",
-    style="blueprint_thin_flow"
+    style="blueprint_thin_flow_vertical"
   }
 
   local books = global.books[player.force.name]
@@ -1602,6 +1602,7 @@ on_gui_click = {
     end
 }
 script.on_event(defines.events.on_gui_click, on_gui_click.on_gui_click)
+script.on_event(defines.events.on_gui_checked_state_changed, on_gui_click.on_gui_click)
 
 local function toggleGui(event_)
   local _, err = pcall(function(event)
