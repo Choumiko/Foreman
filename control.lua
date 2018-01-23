@@ -63,9 +63,10 @@ function createBlueprintButton(player)
       topGui.add{
         type = "flow",
         name = "foremanFlow",
-        direction = "horizontal",
-        style = "blueprint_thin_flow"
+        --direction = "horizontal",
+        --style = "blueprint_thin_flow"
       }
+      topGui.foremanFlow.style.top_padding = 4
       if not topGui.foremanFlow.blueprintTools then
         topGui.foremanFlow.add({type="sprite-button", name="blueprintTools", sprite="main_button_sprite", style="blueprint_main_button"})
       end

@@ -48,6 +48,8 @@ Features
 ***
 Changelog
 ---
+3.0.0 and above: see ingame changelog
+
 2.0.4
 
  - fixed error when mirroring the active blueprint in a book
