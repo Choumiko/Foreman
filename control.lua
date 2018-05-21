@@ -12,7 +12,7 @@ function debugLog(message, force)
   if false or force then -- set for debug
     for _,player in pairs(game.players) do
       player.print(message)
-  end
+    end
   end
 end
 
@@ -993,6 +993,22 @@ function mirror(blueprint)
       elseif entType == "constant-combinator" and ent.name == "smart-train-stop-proxy-cargo" then
         ent.direction = 0
         table.insert(smartCargo, {entity = {name=ent.name, position = Position.copy(ent.position)}, i = i})
+      elseif entType == "splitter" then
+        ent.direction = (others - ent.direction) % 8
+        if ent.input_priority then
+          if ent.input_priority == "left" then
+            ent.input_priority = "right"
+          elseif ent.input_priority == "right" then
+            ent.input_priority = "left"
+          end
+        end
+        if ent.output_priority then
+          if ent.output_priority == "left" then
+            ent.output_priority = "right"
+          elseif ent.output_priority == "right" then
+            ent.output_priority = "left"
+          end
+        end
       else
         ent.direction = (others - ent.direction) % 8
       end
