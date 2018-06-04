@@ -18,8 +18,8 @@ OUT_FILES := $(SED_FILES:%=$(OUTPUT_DIR)/%)
 SED_EXPRS := -e 's/{{MOD_NAME}}/$(PACKAGE_NAME)/g'
 SED_EXPRS += -e 's/{{VERSION}}/$(VERSION_STRING)/g'
 
-all: clean verify package install_mod
-release: clean verify package install_mod tag
+all: clean verify package remove_mod install_mod
+release: clean verify package remove_mod install_mod tag
 package-copy: $(PKG_DIRS) $(PKG_FILES)
 	mkdir -p $(OUTPUT_DIR)
 ifneq ($(PKG_COPY),)
@@ -43,6 +43,15 @@ clean:
 
 verify:
 	luacheck . --exclude-files blueprintstring/ --exclude-files factorio_mods/ --exclude-files build/ --exclude-files data*.lua --exclude-files prototypes/ -d --globals Game game global remote serpent bit32 defines script table string log util
+
+remove_mod:
+	if [ -L factorio_mods ];\
+	then \
+		for name in factorio_mods/$(PACKAGE_NAME)*; do \
+			echo "removing $$name"; \
+			rm -rf $$name; \
+		done \
+	fi;
 
 install_mod:
 	if [ -L factorio_mods ] ; \
